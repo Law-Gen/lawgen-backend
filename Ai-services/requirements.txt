@@ -1,0 +1,24 @@
+# Core Frameworks and Servers
+fastapi
+uvicorn[standard]
+
+# AI/LLM Frameworks and Integrations
+langchain
+langchain-community
+langchain-text-splitters
+langchain-huggingface
+langchain-google-genai
+
+# Data Handling and Vector Database
+chromadb
+sentence-transformers
+PyPDF2
+
+# Utilities and Front-end like for custom testing and the like ..
+python-dotenv
+streamlit
+
+# Deprecated/Alternative Packages (commented out)
+# Since I moved the LLM from groq to gemini, I commented this package. If you want to check groq, you have to install this package.
+# groq
+# langchain-groq
