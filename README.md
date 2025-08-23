@@ -61,13 +61,14 @@ graph TD
         A[Web/Mobile App]
     end
 
-    %% Backend Tier (acts as container)
+    %% Backend Core
     subgraph Backend Tier
         B(API Gateway)
         SD(Service Discovery)
         RMQ(RabbitMQ Message Broker)
     end
 
+    %% Backend Subsystems
     subgraph Services
         C[User Service]
         D[Subscription Service]
@@ -203,7 +204,11 @@ All error responses from the API Gateway and backend services will adhere to a c
 
 ---
 
-### 4.1. User Management & Authentication (Routed to User Service - C)
+### 4. External APIs (Client to API Gateway)
+
+These are the public-facing APIs consumed directly by the Web and Mobile applications via the API Gateway.
+
+#### 4.1. User Management & Authentication (Routed to User Service - C)
 
 | Endpoint                   | Method | Description                                  | Request Body (Example)                               | **Success Response (20x)**                               | **Error Response (40x, 500)**                                |
 | :------------------------- | :----- | :------------------------------------------- | :--------------------------------------------------- | :------------------------------------------------------- | :----------------------------------------------------------- |
@@ -216,8 +221,9 @@ All error responses from the API Gateway and backend services will adhere to a c
 | `/users/me`                | `GET`  | Get current user's profile                   | *(Auth Header)*                                      | `200 OK` `{"id": "uuid", "first_name": "John", "last_name": "Doe", "email": "user@example.com", "birth_date": "1990-01-15", "gender": "male", "profile_picture_url": "http://example.com/pic.jpg", "language_preference": "en", "subscription_status": "free", "role": "user"}` | `401 UNAUTHORIZED`, `404 NOT_FOUND`                          |
 | `/users/me`                | `PUT`  | Update current user's profile                | `{"first_name": "Jonathan", "profile_picture_url": "http://example.com/new_pic.jpg", "gender": "male"}` | `200 OK` `{"message": "Profile updated successfully."}`          | `400 INVALID_INPUT`, `401 UNAUTHORIZED`                      |
 | `/users/me/password`       | `PUT`  | Change user's password (for email/password users) | `{"old_password": "old_pw", "new_password": "new_pw"}` | `200 OK` `{"message": "Password updated successfully."}`         | `400 INVALID_INPUT`, `401 AUTHENTICATION_FAILED` (old password incorrect) |
-| `/auth/forgot-password`    | `POST` | Initiate password reset                      | `{"email": "user@example.com"}`                      | `200 OK` `{"message": "Password reset link sent to email."}`   | `400 INVALID_INPUT`, `404 NOT_FOUND` (email not found)       |
-| `/auth/reset-password`     | `POST` | Complete password reset                      | `{"token": "reset_token", "new_password": "new_pw"}` | `200 OK` `{"message": "Password reset successfully."}`         | `400 INVALID_INPUT`, `401 UNAUTHORIZED` (token invalid/expired) |
+| `/auth/forgot-password`    | `POST` | Initiate password reset (send OTP)           | `{"email": "user@example.com"}`                      | `200 OK` `{"message": "OTP sent to registered email/phone."}`  | `400 INVALID_INPUT`, `404 NOT_FOUND` (user not found), `429 RATE_LIMIT_EXCEEDED` |
+| `/auth/verify-otp`         | `POST` | Verify OTP for password reset                | `{"email": "user@example.com", "otp_code": "123456"}` | `200 OK` `{"message": "OTP verified successfully.", "reset_token": "temp_reset_jwt_token"}` | `400 INVALID_INPUT`, `401 AUTHENTICATION_FAILED` (OTP invalid/expired/max retries), `404 NOT_FOUND` |
+| `/auth/reset-password`     | `POST` | Set new password with reset token            | `{"reset_token": "temp_reset_jwt_token", "new_password": "new_secure_password"}` | `200 OK` `{"message": "Password reset successfully. Please log in."}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED` (reset_token invalid/expired) |
 
 #### 4.2. Subscription Management (Routed to Subscription Service - D)
 
@@ -460,6 +466,11 @@ This section provides a clear, tabular representation of the core data entities 
 | `role`              | TEXT      | User role ('user', 'admin', 'enterprise_user')     |
 | `oauth_provider`    | TEXT      | OAuth provider if used (e.g., 'google', NULL)      |
 | `oauth_id`          | TEXT      | Unique ID from OAuth provider                      |
+| `otp_code_hash`     | TEXT      | Hashed OTP for password reset                      |
+| `otp_expiry`        | TIMESTAMP | Expiry timestamp for the OTP                       |
+| `otp_retries`       | INTEGER   | Remaining OTP retry attempts                       |
+| `reset_token`       | TEXT      | Temporary token for password reset access          |
+| `reset_token_expiry` | TIMESTAMP | Expiry timestamp for the reset token               |
 | `created_at`        | TIMESTAMP | Timestamp of user creation                         |
 | `updated_at`        | TIMESTAMP | Timestamp of last user update                      |
 
@@ -591,5 +602,3 @@ This section provides a clear, tabular representation of the core data entities 
 *   **Documentation in Code:** Supplement this high-level documentation with inline code comments and OpenAPI/Swagger specifications within each service for more granular details.
 *   **Testing:** Unit, integration, and end-to-end tests should validate adherence to these API contracts.
 *   **Communication:** Any ambiguities or proposed changes to these specifications **must be discussed** with affected teams (backend and frontend) before implementation.
-
-This document is a living artifact. Regular reviews and updates will be crucial as the LawGen project evolves.
