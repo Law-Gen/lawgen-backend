@@ -1,6 +1,3 @@
-Understood. This refined documentation will be even more precise, covering the specific requirements for OAuth, static quiz management (including explicit formats and CRUD operations for admins), and the handling of legal content as external PDF links stored via a third-party cloud storage.
-
-This `README.md` will now serve as a **state-of-the-art clear document**, ensuring seamless communication and integration across all development teams.
 
 ---
 
@@ -23,6 +20,8 @@ This document serves as the authoritative technical specification for the LawGen
     *   [4.4. Quizzes (Chat & Quiz Service - F)](#44-quizzes-chat--quiz-service---f)
     *   [4.5. Content Browsing (AI Query & Content Service - E)](#45-content-browsing-ai-query--content-service---e)
     *   [4.6. Analytics & Feedback (Analytics & Feedback Service - H)](#46-analytics--feedback-analytics--feedback-service---h)
+        *   [4.6.1. Internal Dev Feedback](#461-internal-dev-feedback)
+        *   [4.6.2. Enterprise Analytics Access](#462-enterprise-analytics-access)
     *   [4.7. Admin Endpoints (Admin Service - I)](#47-admin-endpoints-admin-service---i)
 5.  [Internal APIs (Service-to-Service Communication)](#5-internal-apis-service-to-service-communication)
     *   [5.1. Synchronous Calls via Service Discovery](#51-synchronous-calls-via-service-discovery)
@@ -32,9 +31,9 @@ This document serves as the authoritative technical specification for the LawGen
     *   [6.2. Speech-to-Text / Text-to-Speech (K)](#62-speech-to-text--text-to-speech-k)
     *   [6.3. Payment Gateway (L)](#63-payment-gateway-l)
     *   [6.4. Email Service (M)](#64-email-service-m)
-    *   [6.5. Cloud Storage (for PDFs)](#65-cloud-storage-for-pdfs)
-    *   [6.6. OAuth Providers (e.g., Google, Facebook)](#66-oauth-providers-eg-google-facebook)
-7.  [Data Models (Brief)](#7-data-models-brief)
+    *   [6.5. Cloud Storage (N - for PDFs)](#65-cloud-storage-n---for-pdfs)
+    *   [6.6. OAuth Providers (O - e.g., Google)](#66-oauth-providers-o---eg-google)
+7.  [Data Models (Detailed)](#7-data-models-detailed)
 8.  [Development Guidelines & Expectations](#8-development-guidelines--expectations)
 
 ---
@@ -98,13 +97,14 @@ graph TD
     A -- All Requests --> B
     B -- /auth, /users --> C
     B -- /subscriptions, /billing --> D
-    B -- /chat, /query, /quizzes --> F
-    B -- /categories, /content --> E
-    B -- /analytics --> H
+    B -- /chat, /query --> F
+    B -- /quizzes, /quiz-categories --> F
+    B -- /contents --> E
+    B -- /feedback, /enterprise/analytics --> H
     B -- /admin --> I
     
     %% Internal Synchronous Communication (via Service Discovery)
-    F -- Forwards AI Query --> E
+    F -- Initial Query/Follow-up --> E
     F -- Fetches Quiz Content --> E
 
     %% External Communication
@@ -131,6 +131,8 @@ graph TD
     C -- Subscribes to 'subscription.updated' --> RMQ
     H -- Subscribes to All Business Events --> RMQ
     C -- Publishes 'user.registered' --> RMQ
+    F -- Publishes 'query.analyzed' --> RMQ %% For enterprise analytics (via H)
+    F -- Publishes 'quiz.attempted' --> RMQ %% For enterprise analytics (via H)
 ```
 
 ### 3. API Gateway (B) - Entry Point & General API Principles
@@ -143,7 +145,7 @@ The API Gateway is the single point of entry for all external (client-facing) re
 #### General Request & Response Structure
 
 *   **Request Headers:**
-    *   `Content-Type: application/json` for all `POST`, `PUT`, `PATCH` requests.
+    *   `Content-Type: application/json` for all `POST`, `PUT`, `PATCH` requests (unless `multipart/form-data` for file uploads).
     *   `Authorization: Bearer <JWT_TOKEN>` for authenticated endpoints.
     *   `Accept-Language: en` or `am` (optional, for explicit language preference for content/AI responses).
 *   **Successful Responses (2xx):**
@@ -155,13 +157,13 @@ The API Gateway is the single point of entry for all external (client-facing) re
 
 *   **Authentication Mechanism:** JWT (JSON Web Tokens) for traditional login, and OAuth 2.0 for third-party providers.
     *   Upon successful traditional login/registration, the API Gateway (via User Service) issues an `access_token` (short-lived, ~15-60 min) and a `refresh_token` (longer-lived, ~7 days).
-    *   For OAuth, the User Service handles the redirect flow and issues internal JWTs upon successful authorization.
+    *   For OAuth, the User Service handles the redirect flow and, upon successful authorization and user creation/login, generates LawGen's own JWTs.
     *   The `access_token` must be included in the `Authorization` header as `Bearer <access_token>` for all protected endpoints.
     *   The `refresh_token` is used to obtain a new `access_token` when the current one expires, via the `/auth/refresh` endpoint.
 *   **Authorization:**
     *   The API Gateway performs initial JWT validation.
-    *   User roles (e.g., `user`, `admin`) are embedded in the JWT payload or retrieved by downstream services.
-    *   Services perform granular authorization checks (e.g., "only an admin can update content", "a user can only see their own chat history").
+    *   User roles (e.g., `user`, `admin`, `enterprise_user`) are embedded in the JWT payload or retrieved by downstream services.
+    *   Services perform granular authorization checks (e.g., "only an admin can update content", "an enterprise_user can access analytics").
 
 #### Common Error Responses
 
@@ -181,7 +183,7 @@ All error responses from the API Gateway and backend services will adhere to a c
 | :--------------- | :----------------- | :----------------------------------------- | :-------------------------------------------------------------------------- |
 | `400 Bad Request`  | `INVALID_INPUT`    | "Invalid email format."                    | Request body/parameters are malformed or fail validation.                   |
 |                  | `MISSING_FIELD`    | "Required field 'password' is missing."    | A mandatory field was not provided.                                         |
-| `401 Unauthorized` | `AUTHENTICATION_FAILED` | "Invalid credentials."                     | Failed login, incorrect password, or invalid OAuth state.                   |
+| `401 Unauthorized` | `AUTHENTICATION_FAILED` | "Invalid credentials."                     | Failed login, incorrect password, or invalid OAuth state/token.             |
 |                  | `UNAUTHORIZED`     | "Missing or invalid access token."         | Token not provided, expired, or malformed.                                  |
 | `403 Forbidden`    | `ACCESS_DENIED`    | "You do not have permission to perform this action." | Authenticated user lacks the necessary role or permissions.                 |
 | `404 Not Found`    | `NOT_FOUND`        | "Resource not found."                      | The requested resource (e.g., user, content ID) does not exist.             |
@@ -198,18 +200,19 @@ These are the public-facing APIs consumed directly by the Web and Mobile applica
 
 #### 4.1. User Management & Authentication (Routed to User Service - C)
 
-| Endpoint                 | Method | Description                                  | Request Body (Example)                               | **Success Response (20x)**                               | **Error Response (40x, 500)**                                |
-| :----------------------- | :----- | :------------------------------------------- | :--------------------------------------------------- | :------------------------------------------------------- | :----------------------------------------------------------- |
-| `/auth/register`         | `POST` | Register a new user (email/password)         | `{"email": "user@example.com", "password": "securepassword", "language_preference": "en"}` | `201 Created` `{"message": "User registered successfully."}`           | `400 INVALID_INPUT`, `409 DUPLICATE_RESOURCE` (`email` already exists) |
-| `/auth/login`            | `POST` | Authenticate user and get tokens (email/password) | `{"email": "user@example.com", "password": "securepassword"}` | `200 OK` `{"access_token": "jwt_token", "refresh_token": "refresh_token"}` | `401 AUTHENTICATION_FAILED`                                |
-| `/auth/refresh`          | `POST` | Refresh access token                         | `{"refresh_token": "refresh_token"}`                 | `200 OK` `{"access_token": "new_jwt_token"}`                   | `401 UNAUTHORIZED` (`refresh_token` invalid/expired)       |
-| `/auth/google`           | `GET`  | Initiate Google OAuth flow                   | *(None)*                                             | `302 Redirect` to Google's authentication page           | `500 SERVER_ERROR` (OAuth configuration issue)               |
-| `/auth/google/callback`  | `GET`  | OAuth callback from Google                   | `?code=auth_code&state=oauth_state`                  | `302 Redirect` to client with JWTs (`access_token`, `refresh_token`) in URL parameters or cookies | `401 AUTHENTICATION_FAILED` (invalid code, state mismatch) |
-| `/users/me`              | `GET`  | Get current user's profile                   | *(Auth Header)*                                      | `200 OK` `{"id": "uuid", "email": "user@example.com", "language_preference": "en", "subscription_status": "free"}` | `401 UNAUTHORIZED`, `404 NOT_FOUND`                          |
-| `/users/me`              | `PUT`  | Update current user's profile                | `{"language_preference": "am"}`                      | `200 OK` `{"message": "Profile updated successfully."}`          | `400 INVALID_INPUT`, `401 UNAUTHORIZED`                      |
-| `/users/me/password`     | `PUT`  | Change user's password (for email/password users) | `{"old_password": "old_pw", "new_password": "new_pw"}` | `200 OK` `{"message": "Password updated successfully."}`         | `400 INVALID_INPUT`, `401 AUTHENTICATION_FAILED` (old password incorrect) |
-| `/auth/forgot-password`  | `POST` | Initiate password reset                      | `{"email": "user@example.com"}`                      | `200 OK` `{"message": "Password reset link sent to email."}`   | `400 INVALID_INPUT`, `404 NOT_FOUND` (email not found)       |
-| `/auth/reset-password`   | `POST` | Complete password reset                      | `{"token": "reset_token", "new_password": "new_pw"}` | `200 OK` `{"message": "Password reset successfully."}`         | `400 INVALID_INPUT`, `401 UNAUTHORIZED` (token invalid/expired) |
+| Endpoint                   | Method | Description                                  | Request Body (Example)                               | **Success Response (20x)**                               | **Error Response (40x, 500)**                                |
+| :------------------------- | :----- | :------------------------------------------- | :--------------------------------------------------- | :------------------------------------------------------- | :----------------------------------------------------------- |
+| `/auth/register`           | `POST` | Register a new user (email/password)         | `{"username": "JohnDoe", "email": "user@example.com", "password": "securepassword"}` | `201 Created` `{"message": "User registered successfully."}`           | `400 INVALID_INPUT`, `409 DUPLICATE_RESOURCE` (`email` already exists) |
+| `/auth/login`              | `POST` | Authenticate user and get tokens (email/password) | `{"email": "user@example.com", "password": "securepassword"}` | `200 OK` `{"access_token": "jwt_token", "refresh_token": "refresh_token", "user": {"id": "uuid", "username": "JohnDoe", "email": "user@example.com", "subscription_status": "free", "role": "user"}}}` | `401 AUTHENTICATION_FAILED`                                |
+| `/auth/refresh`            | `POST` | Refresh access token                         | `{"refresh_token": "refresh_token"}`                 | `200 OK` `{"access_token": "new_jwt_token"}`                   | `401 UNAUTHORIZED` (`refresh_token` invalid/expired)       |
+| `/auth/google`             | `GET`  | Initiate Google OAuth flow                   | *(None)*                                             | `302 Redirect` to Google's authentication page           | `500 SERVER_ERROR` (OAuth configuration issue)               |
+| `/auth/google/callback`    | `GET`  | OAuth callback from Google                   | `?code=auth_code&state=oauth_state` (backend receives this directly) | `302 Redirect` to client with encrypted payload (`https://frontend.lawgen.et/oauth/callback?payload=encrypted_code_and_state`) | `302 Redirect` to client with error (`https://frontend.lawgen.et/oauth/error?code=AUTHENTICATION_FAILED`) |
+| `/auth/register_google`    | `POST` | Finalize Google OAuth registration/login     | `{"payload": "encrypted_code_and_state", "username": "OptionalUserName"}` | `200 OK` `{"access_token": "jwt_token", "refresh_token": "refresh_token", "user": {"id": "uuid", "username": "JohnDoe", "email": "user@example.com", "subscription_status": "free", "role": "user"}}}` | `400 INVALID_INPUT` (invalid payload), `401 AUTHENTICATION_FAILED` (Google token exchange failed), `409 DUPLICATE_RESOURCE` |
+| `/users/me`                | `GET`  | Get current user's profile                   | *(Auth Header)*                                      | `200 OK` `{"id": "uuid", "username": "JohnDoe", "email": "user@example.com", "language_preference": "en", "subscription_status": "free", "role": "user"}` | `401 UNAUTHORIZED`, `404 NOT_FOUND`                          |
+| `/users/me`                | `PUT`  | Update current user's profile                | `{"username": "JohnnyD"}`                            | `200 OK` `{"message": "Profile updated successfully."}`          | `400 INVALID_INPUT`, `401 UNAUTHORIZED`                      |
+| `/users/me/password`       | `PUT`  | Change user's password (for email/password users) | `{"old_password": "old_pw", "new_password": "new_pw"}` | `200 OK` `{"message": "Password updated successfully."}`         | `400 INVALID_INPUT`, `401 AUTHENTICATION_FAILED` (old password incorrect) |
+| `/auth/forgot-password`    | `POST` | Initiate password reset                      | `{"email": "user@example.com"}`                      | `200 OK` `{"message": "Password reset link sent to email."}`   | `400 INVALID_INPUT`, `404 NOT_FOUND` (email not found)       |
+| `/auth/reset-password`     | `POST` | Complete password reset                      | `{"token": "reset_token", "new_password": "new_pw"}` | `200 OK` `{"message": "Password reset successfully."}`         | `400 INVALID_INPUT`, `401 UNAUTHORIZED` (token invalid/expired) |
 
 #### 4.2. Subscription Management (Routed to Subscription Service - D)
 
@@ -227,60 +230,85 @@ These are the public-facing APIs consumed directly by the Web and Mobile applica
 | :----------------------- | :----- | :--------------------------------------------- | :--------------------------------------------------- | :--------------------------------------------------------------- | :--------------------------------------------------------------------- |
 | `/chat/query`            | `POST` | Submit a legal query                           | `{"question": "How do inheritance laws work in Ethiopia?", "language": "en"}` | `200 OK` `{"id": "chat_id", "summary": "Under Ethiopian Civil Code...", "sources": ["Article 842 Civil Code"]}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `500 SERVER_ERROR` (AI/Content service failure) |
 | `/chat/history`          | `GET`  | Get user's chat history                        | *(Auth Header)*                                      | `200 OK` `[{"id": "chat_id_1", "question": "...", "summary": "...", "timestamp": "..."}, {...}]` | `401 UNAUTHORIZED`                                                     |
-| `/chat/{chatId}/followup` | `POST` | Submit a follow-up question for an existing chat | `{"followup_question": "Explain Article 123 further."}` | `200 OK` `{"id": "chat_id_x", "summary": "Article 123 specifies...", "sources": ["Article 123 Civil Code"]}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 NOT_FOUND` (chatId invalid), `500 SERVER_ERROR` |
+| `/chat/{chatId}/followup` | `POST` | Submit a follow-up question for an existing chat | `{"followup_question": "Explain Article 123 further.", "chat_history": [{"role": "user", "content": "..."}, {"role": "ai", "content": "..."}]}` | `200 OK` `{"id": "chat_id_x", "summary": "Article 123 specifies...", "sources": ["Article 123 Civil Code"]}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 NOT_FOUND` (chatId invalid), `500 SERVER_ERROR` |
 
 #### 4.4. Quizzes (Chat & Quiz Service - F)
 
-| Endpoint               | Method | Description                                 | Request Body (Example)                                                                                                                                                                                                                                                                                            | **Success Response (20x)**                                                                                                                                                                                                                                                         | **Error Response (40x, 500)**                                  |
-| :--------------------- | :----- | :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
-| `/quizzes`             | `GET`  | Get list of available quizzes               | *(Auth Header)*                                                                                                                                                                                                                                                                                                   | `200 OK` `[{"id": "quiz_id_1", "title": "Inheritance Law Basics", "description": "Test your knowledge of Ethiopian inheritance laws."}, {"id": "quiz_id_2", "title": "Contract Law"}]` | `401 UNAUTHORIZED`                                             |
-| `/quizzes/{quizId}`    | `GET`  | Get details of a specific quiz (questions & options) | *(Auth Header)*                                                                                                                                                                                                                                                                                                   | `200 OK` `{"id": "quiz_id_1", "title": "Inheritance Law Basics", "description": "...", "questions": [{"q_id": "q1", "text": "Who inherits property if there is no will?", "options": {"A": "Spouse only", "B": "Children equally", "C": "State", "D": "Eldest son"}}, {"q_id": "q2", "text": "..."}]}` | `401 UNAUTHORIZED`, `404 NOT_FOUND` (quizId invalid)           |
-| `/quizzes/{quizId}/submit` | `POST` | Submit answers for a quiz                   | `{"answers": [{"question_id": "q1", "selected_option": "B"}, {"question_id": "q2", "selected_option": "A"}]}`                                                                                                                                                                                                    | `200 OK` `{"score": 80, "total_questions": 10, "results": [{"question_id": "q1", "correct": true, "correct_option": "B", "user_selected": "B"}, {"question_id": "q2", "correct": false, "correct_option": "C", "user_selected": "A"}], "message": "Quiz submitted successfully."}` | `400 INVALID_INPUT` (missing answers, invalid options), `401 UNAUTHORIZED`, `404 NOT_FOUND` (quizId invalid) |
+**Frontend Logic:** Frontend will fetch quiz categories, then quizzes within a chosen category. When a quiz is selected, the frontend retrieves the full quiz data (including all questions and their correct answers). The frontend then handles all quiz presentation, user interaction, answer validation, and scoring locally.
 
-#### 4.5. Content Browsing (Routed to AI Query & Content Service - E)
+| Endpoint                 | Method | Description                                     | Request Body (Example)                               | **Success Response (20x)**                                                                                                                                                                                                                                                         | **Error Response (40x, 500)**                                  |
+| :----------------------- | :----- | :---------------------------------------------- | :--------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| `/quiz-categories`       | `GET`  | Get list of available quiz categories           | *(Auth Header)*                                      | `200 OK` `[{"id": "cat_1", "name": "Level 1"}, {"id": "cat_2", "name": "Level 2"}]`                                                                                                                                                                                                | `401 UNAUTHORIZED`                                             |
+| `/quiz-categories/{categoryId}/quizzes` | `GET`  | Get quizzes for a specific category             | *(Auth Header)*                                      | `200 OK` `[{"id": "quiz_id_1", "name": "Inheritance Law Basics", "description": "Test your knowledge of Ethiopian inheritance laws."}, {"id": "quiz_id_2", "name": "Contract Law"}]` | `401 UNAUTHORIZED`, `404 NOT_FOUND` (category_id invalid)      |
+| `/quizzes/{quizId}`      | `GET`  | Get a specific quiz with all questions and answers | *(Auth Header)*                                      | `200 OK` `{"id": "quiz_id_1", "name": "Inheritance Law Basics", "description": "...", "questions": [{"q_id": "q1", "text": "Who inherits property if there is no will?", "options": {"A": "Spouse only", "B": "Children equally", "C": "State", "D": "Eldest son"}, "correct_option": "B"}, {"q_id": "q2", "text": "...", "options": {"A":"Yes","B":"No"}, "correct_option": "A"}]}` | `401 UNAUTHORIZED`, `404 NOT_FOUND` (quizId invalid)           |
 
-| Endpoint                | Method | Description                                | Request Body (Example)               | **Success Response (20x)**                             | **Error Response (40x, 500)**                       |
-| :---------------------- | :----- | :----------------------------------------- | :----------------------------------- | :----------------------------------------------------- | :-------------------------------------------------- |
-| `/content/categories`   | `GET`  | Get list of legal content categories       | *(Auth Header optional)*             | `200 OK` `[{"id": "cat_1", "name": "Civil Code"}, {"id": "cat_2", "name": "Constitution"}]` | `500 SERVER_ERROR`                                  |
-| `/content/search`       | `GET`  | Search legal content (query parameters)    | `?query=property&category_id=cat_1`  | `200 OK` `[{"id": "doc_1", "title": "Article 842", "snippet": "...", "source_url": "https://storage.cloud/pdf/doc1.pdf"}, {...}]` | `400 INVALID_INPUT` (invalid query/category)        |
-| `/content/{contentId}`  | `GET`  | Get specific legal content details         | *(Auth Header optional)*             | `200 OK` `{"id": "doc_1", "title": "Article 842", "description": "Summary of Article 842...", "source_url": "https://storage.cloud/pdf/doc1.pdf", "extracted_text_for_ai": "Full text of Article 842 for AI processing."}` | `404 NOT_FOUND` (contentId invalid)                 |
+#### 4.5. Content Browsing (AI Query & Content Service - E)
 
-#### 4.6. Analytics & Feedback (Routed to Analytics & Feedback Service - H)
+**Frontend Logic:** Frontend makes one API call to `/contents` (with optional pagination). It then displays the listed contents, which can be grouped by `group_name` client-side if desired. When a specific content is clicked, the frontend uses its `url` to redirect the user to the PDF directly.
+
+| Endpoint           | Method | Description                                   | Request Body (Example)             | **Success Response (20x)**                                                                                                       | **Error Response (40x, 500)**                       |
+| :----------------- | :----- | :-------------------------------------------- | :--------------------------------- | :----------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------- |
+| `/contents`        | `GET`  | Get all legal contents (paginated list)       | `?page=1&limit=10&search=property` | `200 OK` `{"items": [{"id": "doc_1", "name": "Article 842 - Inheritance", "url": "https://storage.cloud/pdf/doc1.pdf"}, {"id": "doc_2", "name": "Marriage Proclamation", "url": "https://storage.cloud/pdf/doc2.pdf"}], "total_pages": 5, "current_page": 1}` | `400 INVALID_INPUT` (invalid page/limit/search)        |
+
+#### 4.6. Analytics & Feedback (Analytics & Feedback Service - H)
+
+This service manages both internal developer feedback and aggregated analytics for enterprise users.
+
+##### 4.6.1. Internal Dev Feedback
+
+This endpoint is for internal developers to submit system-related feedback (bugs, crashes, feature requests for the dev team).
 
 | Endpoint     | Method | Description               | Request Body (Example)                          | **Success Response (20x)**                 | **Error Response (40x, 500)**                      |
 | :----------- | :----- | :------------------------ | :---------------------------------------------- | :----------------------------------------- | :------------------------------------------------- |
-| `/feedback`  | `POST` | Submit user feedback      | `{"rating": 5, "comment": "Great app!", "type": "bug_report"}` | `200 OK` `{"message": "Feedback submitted."}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`            |
+| `/feedback`  | `POST` | Submit internal dev feedback | `{"submitter_user_id": "admin_uuid", "type": "bug_report", "description": "Crash on login for Android 12", "severity": "High"}` | `200 OK` `{"message": "Feedback submitted."}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED` (Admin only or specific dev role) |
+
+##### 4.6.2. Enterprise Analytics Access
+
+These endpoints allow authenticated `enterprise_user` roles to access aggregated analytical data for market insights and trends.
+
+| Endpoint                         | Method | Description                                       | Request Body (Example)                               | **Success Response (20x)**                                       | **Error Response (40x, 500)**                                          |
+| :------------------------------- | :----- | :------------------------------------------------ | :--------------------------------------------------- | :--------------------------------------------------------------- | :--------------------------------------------------------------------- |
+| `/enterprise/analytics/query-trends` | `GET`  | Get top queried keywords and topics (aggregated) | `?start_date=2023-01-01&end_date=2023-12-31&limit=10` | `200 OK` `{"keywords": [{"term": "inheritance", "count": 150}, {"term": "property rights", "count": 120}], "topics": [{"name": "Family Law", "count": 200}, {"name": "Contracts", "count": 180}]}` | `401 UNAUTHORIZED`, `403 ACCESS_DENIED` (not enterprise user), `400 INVALID_INPUT` |
+| `/enterprise/analytics/quiz-performance` | `GET`  | Get aggregated quiz performance data             | `?quiz_category_id=cat_1&avg_score_min=60`           | `200 OK` `{"quizzes": [{"quiz_id": "quiz_id_1", "avg_score": 75, "total_attempts": 100}, {"quiz_id": "quiz_id_2", "avg_score": 68, "total_attempts": 80}]}` | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `400 INVALID_INPUT`       |
 
 #### 4.7. Admin Endpoints (Admin Service - I)
 
 *These endpoints require elevated administrative privileges (`role: "admin"`) and will return `403 Forbidden` for unauthorized users.*
 
-##### 4.7.1. Admin - User & Analytics Management
+##### 4.7.1. Admin - User Management
 
 | Endpoint                   | Method | Description                       | Request Body (Example)                                | **Success Response (20x)**                              | **Error Response (40x, 500)**                               |
 | :------------------------- | :----- | :-------------------------------- | :---------------------------------------------------- | :------------------------------------------------------ | :---------------------------------------------------------- |
-| `/admin/users`             | `GET`  | Get all users                     | *(Auth Header, Admin Role)*                           | `200 OK` `[{"id": "uuid", "email": "...", "role": "user"}, {...}]` | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`                     |
+| `/admin/users`             | `GET`  | Get all users                     | *(Auth Header, Admin Role)*                           | `200 OK` `[{"id": "uuid", "username": "...", "email": "...", "role": "user"}, {...}]` | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`                     |
 | `/admin/users/{userId}`    | `PUT`  | Update user details               | `{"role": "admin", "status": "active"}`               | `200 OK` `{"message": "User updated."}`                   | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` |
-| `/admin/analytics`         | `GET`  | Get aggregated analytics data     | `?period=month&type=user_activity`                    | `200 OK` `{"user_registrations": 100, "active_users": 50}` | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`                     |
 
-##### 4.7.2. Admin - Legal Content Management (PDFs)
+##### 4.7.2. Admin - Quiz Category Management (CRUD)
 
-Admins will upload PDF files, which will be stored in a **third-party cloud storage service**. The system will save the generated public URL in the database. When users access content, they will be redirected to this URL for viewing.
+| Endpoint                      | Method | Description                          | Request Body (Example)             | **Success Response (20x)**                               | **Error Response (40x, 500)**                               |
+| :---------------------------- | :----- | :----------------------------------- | :--------------------------------- | :------------------------------------------------------- | :---------------------------------------------------------- |
+| `/admin/quiz-categories`      | `POST` | Create a new quiz category           | `{"name": "Advanced Law"}`         | `201 Created` `{"message": "Category created.", "id": "cat_id"}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `409 DUPLICATE_RESOURCE` |
+| `/admin/quiz-categories`      | `GET`  | Get all quiz categories              | *(Auth Header, Admin Role)*        | `200 OK` `[{"id": "cat_1", "name": "Level 1"}, {...}]`  | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`                     |
+| `/admin/quiz-categories/{categoryId}` | `PUT`  | Update a quiz category               | `{"name": "Expert Law"}`           | `200 OK` `{"message": "Category updated."}`              | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` |
+| `/admin/quiz-categories/{categoryId}` | `DELETE` | Delete a quiz category               | *(Auth Header, Admin Role)*        | `204 No Content`                                         | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND`, `409 CONFLICT` (if quizzes exist in category) |
+
+##### 4.7.3. Admin - Legal Content Management (PDFs - CRUD)
+
+Admins will upload PDF files to **third-party cloud storage**. The system saves the public URL. `extracted_text_for_ai` will be processed and stored for AI queries. Users view content via the `url`.
 
 | Endpoint                   | Method | Description                                   | Request Body (Example)                                     | **Success Response (20x)**                                           | **Error Response (40x, 500)**                               |
 | :------------------------- | :----- | :-------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------- | :---------------------------------------------------------- |
-| `/admin/content`           | `POST` | Add new legal content (PDF upload)            | `multipart/form-data` with `file` (the PDF), `title`, `description`, `category_id`, `language` | `201 Created` `{"message": "Content added.", "id": "new_id", "source_url": "https://storage.cloud/pdf/new_id.pdf"}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `500 SERVER_ERROR` (cloud storage issue) |
-| `/admin/content/{contentId}` | `PUT`  | Update legal content (metadata or new PDF)    | `multipart/form-data` with optional `file`, `title`, `description`, `category_id`, `language` | `200 OK` `{"message": "Content updated.", "source_url": "https://storage.cloud/pdf/updated_id.pdf"}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` |
-| `/admin/content/{contentId}` | `DELETE` | Delete legal content                          | *(Auth Header, Admin Role)*                                | `204 No Content`                                                     | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND`    |
+| `/admin/contents`          | `POST` | Add new legal content (PDF upload)            | `multipart/form-data` with `file` (the PDF), `group_name`, `name`, `description`, `language` | `201 Created` `{"message": "Content added.", "id": "new_id", "url": "https://storage.cloud/pdf/new_id.pdf"}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `500 SERVER_ERROR` (cloud storage/text extraction issue) |
+| `/admin/contents/{contentId}` | `PUT`  | Update legal content (metadata or new PDF)    | `multipart/form-data` with optional `file`, `group_name`, `name`, `description`, `language` | `200 OK` `{"message": "Content updated.", "url": "https://storage.cloud/pdf/updated_id.pdf"}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` |
+| `/admin/contents/{contentId}` | `DELETE` | Delete legal content                          | *(Auth Header, Admin Role)*                                | `204 No Content`                                                     | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND`    |
 
-##### 4.7.3. Admin - Quiz Management (CRUD)
+##### 4.7.4. Admin - Quiz Management (CRUD)
 
-Admins will manage static quizzes, defining questions, options, and correct answers.
+Admins manage static quizzes, including questions, options, and correct answers.
 
 | Endpoint                   | Method | Description                          | Request Body (Example)                                                                                                                                                                                                                                                               | **Success Response (20x)**                                                                                                                                                                                                                                                                                       | **Error Response (40x, 500)**                               |
-| :------------------------- | :----- | :----------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| `/admin/quizzes`           | `POST` | Create a new quiz                    | `{"title": "Family Law Basics", "description": "Test basic family law knowledge.", "questions": [{"q_id": "q1", "text": "Who is head of household?", "options": {"A": "Husband", "B": "Wife", "C": "Both", "D": "Eldest child"}, "correct_option": "C"}, {"q_id": "q2", "text": "...", "options": {}, "correct_option": ""}]}` | `201 Created` `{"message": "Quiz created successfully.", "id": "new_quiz_id"}`                                                                                                                                                                                                                                | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED` |
-| `/admin/quizzes/{quizId}`  | `PUT`  | Update an existing quiz              | `{"title": "Updated Family Law Quiz", "questions": [{"q_id": "q1", "text": "...", "options": {}, "correct_option": "B"}]}` (Partial or full update)                                                                                                                                                           | `200 OK` `{"message": "Quiz updated successfully."}`                                                                                                                                                                                                                                                         | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` |
+| :------------------------- | :----- | :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| `/admin/quizzes`           | `POST` | Create a new quiz                    | `{"name": "Family Law Basics", "description": "Test basic family law knowledge.", "category_id": "cat_1", "questions": [{"q_id": "q1", "text": "Who is head of household?", "options": {"A": "Husband", "B": "Wife", "C": "Both", "D": "Eldest child"}, "correct_option": "C"}, {"q_id": "q2", "text": "...", "options": {}, "correct_option": ""}]}` | `201 Created` `{"message": "Quiz created successfully.", "id": "new_quiz_id"}`                                                                                                                                                                                                                                | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` (category_id invalid) |
+| `/admin/quizzes/{quizId}`  | `PUT`  | Update an existing quiz              | `{"name": "Updated Family Law Quiz", "category_id": "cat_2", "questions": [{"q_id": "q1", "text": "...", "options": {}, "correct_option": "B"}]}` (Partial or full update)                                                                                                                                                           | `200 OK` `{"message": "Quiz updated successfully."}`                                                                                                                                                                                                                                                         | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND` (quizId or category_id invalid) |
 | `/admin/quizzes/{quizId}`  | `DELETE` | Delete a quiz                        | *(Auth Header, Admin Role)*                                                                                                                                                                                                                                                        | `204 No Content`                                                                                                                                                                                                                                                                                       | `401 UNAUTHORIZED`, `403 ACCESS_DENIED`, `404 NOT_FOUND`    |
 
 ---
@@ -297,8 +325,9 @@ Services directly call each other, with endpoint resolution handled by the Servi
 
 | Endpoint                     | Service Call | Description                                     | Request Body (Example)                               | **Success Response (20x)**                                       | **Error Response (40x, 500)**                                          |
 | :--------------------------- | :----------- | :---------------------------------------------- | :--------------------------------------------------- | :--------------------------------------------------------------- | :--------------------------------------------------------------------- |
-| `/internal/ai/summarize`     | `F -> E`     | Forward law text and query for AI summarization | `{"law_text": "Article 842 says...", "user_query": "Explain inheritance", "language": "en", "disclaimer_prompt": "This is for informational purposes only and not legal advice."}` | `200 OK` `{"summary": "Under Ethiopian Civil Code...", "sources": ["Article 842 Civil Code"]}` | `400 INVALID_INPUT`, `500 SERVER_ERROR` (AI/LLM integration failure) |
-| `/internal/quiz/data/{quizId}` | `F -> E`     | Retrieve full quiz data (questions, options, correct answers) | *(Path parameter `quizId`)*                          | `200 OK` `{"id": "quiz_id", "title": "...", "description": "...", "questions": [{"q_id": "q1", "text": "...", "options": {}, "correct_option": "A"}], "created_at": "..."}` | `404 NOT_FOUND` (quizId invalid)                                       |
+| `/internal/ai/summarize`     | `F -> E`     | Request AI summary for a *new* legal query.     | `{"user_query": "How does inheritance work?", "relevant_law_text": "Article 842 says...", "language": "en", "disclaimer_prompt": "This is for informational purposes only..."}` | `200 OK` `{"summary": "Under Ethiopian Civil Code...", "sources": ["Article 842 Civil Code"]}` | `400 INVALID_INPUT`, `500 SERVER_ERROR` (AI/LLM integration failure) |
+| `/internal/ai/chat`          | `F -> E`     | Request AI response for a *follow-up* query.    | `{"user_query": "Explain Article 123 further.", "chat_history": [{"role": "user", "content": "..."}, {"role": "ai", "content": "..."}], "relevant_law_text": "Article 123 specifies...", "language": "en", "disclaimer_prompt": "This is for informational purposes only..."}` | `200 OK` `{"summary": "Article 123 specifies...", "sources": ["Article 123 Civil Code"]}` | `400 INVALID_INPUT`, `500 SERVER_ERROR` (AI/LLM integration failure) |
+| `/internal/content/for-ai/{contentId}` | `F -> E` | Retrieve extracted text for AI from a content ID | *(Path parameter `contentId`)*                       | `200 OK` `{"extracted_text": "Full extracted text for AI processing..."}` | `404 NOT_FOUND` (contentId invalid)                                    |
 
 #### 5.2. Asynchronous Event-Driven Communication (RabbitMQ Message Broker - RMQ)
 
@@ -318,15 +347,16 @@ Events are JSON objects.
 }
 ```
 
-| Event Type               | Publisher            | Subscribers                  | Payload (Example)                                  | Description                                           |
-| :----------------------- | :------------------- | :--------------------------- | :--------------------------------------------------- | :---------------------------------------------------- |
-| `subscription.updated`   | `Subscription Service (D)` | `User Service (C)`, `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "plan_id": "plan_id_1", "status": "active", "effective_date": "2023-01-01"}` | Notifies other services when a user's subscription changes (e.g., status, plan). |
-| `user.registered`        | `User Service (C)`   | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "email": "user@example.com", "registration_date": "2023-01-01"}` | Notifies that a new user has successfully registered. |
-| `query.submitted`        | `Chat & Quiz Service (F)` | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "query_text": "...", "timestamp": "...", "language": "en"}` | Logs every user query for analytics and potentially retraining data. |
-| `quiz.completed`         | `Chat & Quiz Service (F)` | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "quiz_id": "quiz_id_1", "score": 80, "timestamp": "..."}` | Logs quiz completion and user performance.            |
-| `feedback.submitted`     | `Analytics & Feedback Service (H)` | *(None, H stores it)*        | `{"user_id": "uuid", "rating": 5, "comment": "...", "timestamp": "..."}` | Stores user feedback.                                 |
-| `admin.content.uploaded` | `Admin Service (I)`  | `AI Query & Content Service (E)` | `{"content_id": "doc_id", "source_url": "https://storage.cloud/pdf/doc1.pdf", "language": "en", "timestamp": "..."}` | Notifies the content service of a new/updated PDF, triggering text extraction and indexing for AI. |
-| `admin.content.deleted`  | `Admin Service (I)`  | `AI Query & Content Service (E)` | `{"content_id": "doc_id", "timestamp": "..."}` | Notifies content service that a PDF has been deleted, triggering removal from AI index. |
+| Event Type                 | Publisher            | Subscribers                  | Payload (Example)                                  | Description                                           |
+| :------------------------- | :------------------- | :--------------------------- | :--------------------------------------------------- | :---------------------------------------------------- |
+| `subscription.updated`     | `Subscription Service (D)` | `User Service (C)`, `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "plan_id": "plan_id_1", "status": "active", "effective_date": "2023-01-01"}` | Notifies other services when a user's subscription changes (e.g., status, plan). |
+| `user.registered`          | `User Service (C)`   | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "email": "user@example.com", "registration_date": "2023-01-01"}` | Notifies that a new user has successfully registered. |
+| `query.analyzed`           | `Chat & Quiz Service (F)` | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "query_text_raw": "...", "extracted_keywords": ["inheritance", "property"], "topic": "family_law", "timestamp": "...", "language": "en"}` | Collects data for enterprise analytics on queried keywords/topics. |
+| `quiz.attempted`           | `Chat & Quiz Service (F)` | `Analytics & Feedback Service (H)` | `{"user_id": "uuid", "quiz_id": "quiz_id_1", "category_id": "cat_1", "score": 80, "total_questions": 10, "timestamp": "..."}` | Logs quiz completion and user performance for analytics. |
+| `admin.feedback.submitted` | `Analytics & Feedback Service (H)` | *(None, H stores it)*        | `{"user_id": "admin_uuid", "type": "bug_report", "description": "...", "severity": "...", "timestamp": "..."}` | Stores feedback from internal developers for review. |
+| `admin.content.uploaded`   | `Admin Service (I)`  | `AI Query & Content Service (E)` | `{"content_id": "doc_id", "url": "https://storage.cloud/pdf/doc1.pdf", "language": "en", "timestamp": "..."}` | Notifies the content service of a new/updated PDF, triggering text extraction and indexing for AI. |
+| `admin.content.deleted`    | `Admin Service (I)`  | `AI Query & Content Service (E)` | `{"content_id": "doc_id", "timestamp": "..."}` | Notifies content service that a PDF has been deleted, triggering removal from AI index. |
+| `admin.quiz.updated`       | `Admin Service (I)`  | `Chat & Quiz Service (F)`    | `{"quiz_id": "quiz_id_1", "action": "create"|"update"|"delete", "timestamp": "..."}` | Notifies the quiz service of quiz modifications, triggering cache invalidation. |
 
 ---
 
@@ -374,33 +404,171 @@ LawGen integrates with several external third-party services for specialized fun
     *   `POST /v3/mail/send` (SendGrid example)
 *   **Considerations:** Email deliverability, template management, rate limits.
 
-#### 6.5. Cloud Storage (for PDFs)
+#### 6.5. Cloud Storage (N - for PDFs)
 
 *   **Provider:** AWS S3 / Google Cloud Storage / Azure Blob Storage
 *   **Integrated by:** Admin Service (I) for upload, AI Query & Content Service (E) for potential pre-processing/indexing.
 *   **Purpose:** Securely store legal PDF documents and provide publicly accessible URLs.
-*   **Key Interactions:** Admin Service uploads files and receives URLs. These URLs are then stored in the `LegalContent` database.
-*   **Considerations:** Storage costs, access permissions, CDN integration for faster delivery.
+*   **Key Interactions:** Admin Service uploads files to cloud storage and receives a URL. This URL is then stored in the `LegalContents` database. The AI Query & Content Service will then fetch these PDFs (or receive extracted text from I) for AI processing.
+*   **Considerations:** Storage costs, access permissions, CDN integration for faster delivery, robust handling of file uploads and URL generation.
 
-#### 6.6. OAuth Providers (e.g., Google, Facebook)
+#### 6.6. OAuth Providers (O - e.g., Google)
 
 *   **Provider:** Google, Facebook, etc.
 *   **Integrated by:** User Service (C)
-*   **Purpose:** Allow users to register and log in using their existing social media or Google accounts, simplifying the onboarding process.
-*   **Key Interactions:** Standard OAuth 2.0 flow (authorization request, token exchange, user profile retrieval).
-*   **Considerations:** Security (state parameter, PKCE), user data privacy, scope management.
+*   **Purpose:** Allow users to register and log in using their existing social media or Google accounts.
+*   **OAuth Flow (Google Example - Backend Encrypts Code/State for Frontend):**
+    1.  **Frontend Action:** User clicks "Sign in with Google" button on the client.
+    2.  **Client Redirect to Backend:** Frontend redirects the user's browser to the backend's `/auth/google` endpoint.
+    3.  **Backend Redirect to Google:** The User Service, upon receiving the request at `/auth/google`, generates an OAuth authorization URL (including `client_id`, `redirect_uri` (backend's callback), `scope`, and a securely generated `state` parameter) and redirects the user's browser to this Google URL.
+    4.  **User Authorizes on Google:** User logs into Google and grants permission to LawGen.
+    5.  **Google Redirect to Backend Callback:** Google redirects the user's browser back to the User Service's configured `redirect_uri` (e.g., `/auth/google/callback`) with an authorization `code` and the original `state` parameter.
+    6.  **Backend Encrypts & Redirects to Frontend:** The User Service verifies the `state` parameter for CSRF protection. If valid, it **encrypts** the `code` and `state` into a single `payload` using a robust encryption method. It then redirects the user's browser back to a pre-configured frontend OAuth callback URL (e.g., `https://frontend.lawgen.et/oauth/callback?payload=encrypted_string`).
+    7.  **Frontend Calls Backend for Registration/Login:** The frontend receives the encrypted `payload`. It then makes a **POST request** to the backend's `/auth/register_google` endpoint, sending the `payload` in the request body (and optionally a `username` if the user is new and needs to provide one).
+    8.  **Backend Decrypts, Exchanges Code, Registers/Logs in:** The User Service at `/auth/register_google` decrypts the `payload` to retrieve the original `code` and `state`. It then makes a direct, server-to-server POST request to Google's token endpoint, exchanging the `code` for Google's `access_token` and `id_token`. User details are retrieved from Google, and a new user account is provisioned (if necessary) or an existing one is linked.
+    9.  **Backend Generates LawGen JWTs & Responds:** The User Service generates LawGen's internal `access_token` and `refresh_token` for the authenticated user and returns them in the response body of the `/auth/register_google` API call to the frontend.
+*   **Considerations:** Security (state parameter, PKCE if applicable, robust encryption of payload, secure handling of decryption keys), user data privacy, scope management, robust error handling during redirects and token exchange.
 
 ---
 
-### 7. Data Models (Brief)
+### 7. Data Models (Detailed)
 
-Each service manages its own database for data independence. The following are high-level outlines of the core entities. Detailed schema (fields, types, constraints) will be in each service's respective documentation.
+This section provides a clear, tabular representation of the core data entities managed by each microservice.
 
-*   **User Service (C_DB):** `Users` (id, email, password_hash, language_preference, role, created_at, updated_at, `oauth_provider`, `oauth_id`).
-*   **Subscription Service (D_DB):** `Subscriptions` (id, user_id, plan_id, status, start_date, end_date, payment_gateway_id, created_at, updated_at), `Plans` (id, name, description, price, currency, duration_days).
-*   **AI Query & Content Service (E_DB):** `LegalContent` (id, title, category_id, description, `source_url` (for PDF), `extracted_text_for_ai`, language, version, last_updated), `Categories` (id, name).
-*   **Chat & Quiz Service (F_DB):** `ChatSessions` (id, user_id, created_at), `ChatMessages` (id, session_id, sender, text, sources, is_disclaimer_included, timestamp), `Quizzes` (id, title, description, category, `created_by_admin_id`, `created_at`), `Questions` (id, quiz_id, text, `options` (JSON array of key-value pairs), `correct_option`), `UserQuizAttempts` (id, user_id, quiz_id, score, completed_at, `answers` (JSON array of `question_id` and `selected_option`)).
-*   **Analytics & Feedback Service (H_DB):** `AnalyticsEvents` (id, event_type, user_id, payload, timestamp), `Feedback` (id, user_id, rating, comment, timestamp).
+#### 7.1. User Service (C_DB)
+
+**Table: `Users`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the user                     |
+| `username`          | TEXT      | User's display name                                |
+| `email` (Unique)    | TEXT      | User's email address                               |
+| `password_hash`     | TEXT      | Hashed password (for traditional login)            |
+| `language_preference` | TEXT      | Preferred language (e.g., 'en', 'am')              |
+| `role`              | TEXT      | User role ('user', 'admin', 'enterprise_user')     |
+| `oauth_provider`    | TEXT      | OAuth provider if used (e.g., 'google', NULL)      |
+| `oauth_id`          | TEXT      | Unique ID from OAuth provider                      |
+| `created_at`        | TIMESTAMP | Timestamp of user creation                         |
+| `updated_at`        | TIMESTAMP | Timestamp of last user update                      |
+
+#### 7.2. Subscription Service (D_DB)
+
+**Table: `Plans`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the subscription plan        |
+| `name`              | TEXT      | Name of the plan (e.g., 'Basic', 'Premium', 'Enterprise') |
+| `description`       | TEXT      | Description of the plan's features                 |
+| `price`             | DECIMAL   | Price of the plan                                  |
+| `currency`          | TEXT      | Currency code (e.g., 'ETB', 'USD')                 |
+| `duration_days`     | INTEGER   | Duration of the plan in days                       |
+
+**Table: `Subscriptions`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the subscription             |
+| `user_id` (FK)      | UUID      | Reference to the `Users` table                     |
+| `plan_id` (FK)      | UUID      | Reference to the `Plans` table                     |
+| `status`            | TEXT      | Current status ('active', 'canceled', 'expired')   |
+| `start_date`        | TIMESTAMP | Date when the subscription started                 |
+| `end_date`          | TIMESTAMP | Date when the subscription is set to expire        |
+| `payment_gateway_id` | TEXT      | ID from the payment gateway for this subscription  |
+| `created_at`        | TIMESTAMP | Timestamp of subscription creation                 |
+| `updated_at`        | TIMESTAMP | Timestamp of last subscription update              |
+
+#### 7.3. AI Query & Content Service (E_DB)
+
+**Table: `LegalContents`**
+
+| Field Name              | Data Type | Description                                        |
+| :---------------------- | :-------- | :------------------------------------------------- |
+| `id` (PK)               | UUID      | Unique identifier for the legal content            |
+| `group_name`            | TEXT      | Grouping tag for content (e.g., 'Civil Code', 'Family Law') |
+| `name`                  | TEXT      | Individual name of the content (e.g., 'Article 842 - Inheritance') |
+| `description`           | TEXT      | Short description or summary                       |
+| `url` (Unique)          | TEXT      | Public URL to the PDF document in cloud storage    |
+| `extracted_text_for_ai` | LONGTEXT  | Full text extracted from PDF, used by AI           |
+| `language`              | TEXT      | Language of the content (e.g., 'en', 'am')         |
+| `version`               | TEXT      | Version of the legal content                       |
+| `last_updated`          | TIMESTAMP | Timestamp of last content update                   |
+
+#### 7.4. Chat & Quiz Service (F_DB)
+
+**Table: `ChatSessions`**
+
+| Field Name   | Data Type | Description                                        |
+| :----------- | :-------- | :------------------------------------------------- |
+| `id` (PK)    | UUID      | Unique identifier for the chat session             |
+| `user_id` (FK) | UUID      | Reference to the `Users` table                     |
+| `created_at` | TIMESTAMP | Timestamp when the chat session was created        |
+
+**Table: `ChatMessages`**
+
+| Field Name              | Data Type | Description                                        |
+| :---------------------- | :-------- | :------------------------------------------------- |
+| `id` (PK)               | UUID      | Unique identifier for the chat message             |
+| `session_id` (FK)       | UUID      | Reference to the `ChatSessions` table              |
+| `sender`                | TEXT      | Sender of the message ('user', 'ai')               |
+| `text`                  | TEXT      | Content of the message                             |
+| `sources`               | JSONB     | Array of source references (e.g., ["Article 842"]) |
+| `is_disclaimer_included` | BOOLEAN   | True if AI response included a legal disclaimer    |
+| `timestamp`             | TIMESTAMP | Timestamp when the message was sent                |
+
+**Table: `QuizCategories`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the quiz category            |
+| `name` (Unique)     | TEXT      | Name of the category (e.g., 'Level 1', 'Family Law') |
+| `created_by_admin_id` | UUID      | Admin who created this category                    |
+| `created_at`        | TIMESTAMP | Timestamp of category creation                     |
+
+**Table: `Quizzes`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the quiz                     |
+| `name`              | TEXT      | Name of the quiz (e.g., 'Inheritance Law Basics')  |
+| `description`       | TEXT      | Description of the quiz                            |
+| `category_id` (FK)  | UUID      | Reference to the `QuizCategories` table            |
+| `created_by_admin_id` | UUID      | Admin who created this quiz                        |
+| `created_at`        | TIMESTAMP | Timestamp of quiz creation                         |
+
+**Table: `Questions`**
+
+| Field Name        | Data Type | Description                                        |
+| :---------------- | :-------- | :------------------------------------------------- |
+| `id` (PK)         | UUID      | Unique identifier for the question                 |
+| `quiz_id` (FK)    | UUID      | Reference to the `Quizzes` table                   |
+| `text`            | TEXT      | The question text                                  |
+| `options`         | JSONB     | JSON object of options (e.g., `{"A": "Option A Text", "B": "Option B Text"}`) |
+| `correct_option`  | TEXT      | The key of the correct option (e.g., "A")          |
+
+#### 7.5. Analytics & Feedback Service (H_DB)
+
+**Table: `AnalyticsEvents`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the event                    |
+| `event_type`        | TEXT      | Type of event (e.g., 'query.analyzed', 'quiz.attempted') |
+| `user_id` (FK)      | UUID      | User associated with the event (can be NULL for anonymous) |
+| `payload`           | JSONB     | Event-specific data (e.g., keywords, score, raw query text) |
+| `timestamp`         | TIMESTAMP | Timestamp of the event                             |
+
+**Table: `Feedback`**
+
+| Field Name          | Data Type | Description                                        |
+| :------------------ | :-------- | :------------------------------------------------- |
+| `id` (PK)           | UUID      | Unique identifier for the feedback item            |
+| `submitter_user_id` | UUID      | User (admin) who submitted the feedback            |
+| `type`              | TEXT      | Type of feedback ('bug_report', 'feature_request', 'crash') |
+| `description`       | TEXT      | Detailed description of the feedback               |
+| `severity`          | TEXT      | Severity of the bug/issue (e.g., 'High', 'Medium') |
+| `timestamp`         | TIMESTAMP | Timestamp when feedback was submitted              |
 
 ---
 
