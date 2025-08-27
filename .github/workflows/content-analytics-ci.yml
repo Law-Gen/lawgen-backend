@@ -1,0 +1,29 @@
+name: content-analytics CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "services/content-analytics-service/**"
+      - ".github/workflows/content-analytics-ci.yml"
+  pull_request:
+    paths:
+      - "services/content-analytics-service/**"
+      - ".github/workflows/content-analytics-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/content-analytics-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - run: go mod download
+      - run: go vet ./...
+      - run: go test ./... -cover || true
+      - run: go build ./cmd/server

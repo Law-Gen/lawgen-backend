@@ -1,0 +1,16 @@
+# Go
+bin/
+build/
+dist/
+coverage.out
+
+# IDE
+.vscode/
+.idea/
+
+# Node (if any future tooling)
+node_modules/
+
+# Env/Config
+.env
+**/*.local.yaml
