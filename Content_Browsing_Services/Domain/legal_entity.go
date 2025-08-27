@@ -35,6 +35,7 @@ type LegalEntity struct {
 	ContactPerson string `json:"contact_person" bson:"contact_person"`
 }
 
+
 func (e *LegalEntity) IsValid() error {
 	if strings.TrimSpace(e.Name) == "" {
 		return errors.New("name is a required field")
