@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package legal_assistant;
+
+// Legal Assistant Service Definition
+service LegalAssistant {
+  // Stream response for legal questions
+  rpc AskQuestion (QuestionRequest) returns (stream QuestionResponse) {}
+  // Health check
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
+}
+
+// Question request message
+message QuestionRequest {
+  string query = 1;
+}
+
+// Response message for streaming answers
+message QuestionResponse {
+  string text = 1;
+  repeated string references = 2;
+}
+
+// Health check request
+message HealthCheckRequest {}
+
+// Health check response
+message HealthCheckResponse {
+  string status = 1;
+  double timestamp = 2;
+}
