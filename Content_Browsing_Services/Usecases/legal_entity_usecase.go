@@ -7,12 +7,13 @@ import (
 )
 
 type LegalEntityUsecase struct {
-	repo domain.LegalEntityRepository
+	repo domain.ILegalEntityRepository
 }
 
-func NewLegalEntityUsecase (repo domain.LegalEntityRepository) *LegalEntityUsecase {
+func NewLegalEntityUsecase (repo domain.ILegalEntityRepository) *LegalEntityUsecase {
 	return &LegalEntityUsecase{repo: repo}
 }
+
 
 func (uc *LegalEntityUsecase) CreateLegalEntity(ctx context.Context, entity *domain.LegalEntity) (*domain.LegalEntity, error) {
 	if err := entity.IsValid(); err != nil {
@@ -26,7 +27,7 @@ func (uc *LegalEntityUsecase) FetchLegalEntityById(ctx context.Context, id strin
 	return uc.repo.GetByID(ctx, id)
 }
 
-func (uc *LegalEntityUsecase) FetchAllLegalEntities(ctx context.Context, page, limit int, search string) (*domain.PaginatedLegalEntityRespose, error) {
+func (uc *LegalEntityUsecase) FetchAllLegalEntities(ctx context.Context, page, limit int, search string) (*domain.PaginatedLegalEntityResponse, error) {
 	return uc.repo.GetAll(ctx, page, limit,search)
 }
 

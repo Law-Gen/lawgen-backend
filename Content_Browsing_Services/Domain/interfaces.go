@@ -1,19 +1,37 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
-type LegalEntityRepository interface {
+type ILegalEntityRepository interface {
 	Save(ctx context.Context, entity *LegalEntity) (*LegalEntity, error)
 	GetByID(ctx context.Context, id string) (*LegalEntity, error)
-	GetAll(ctx context.Context, page, limit int, search string) (*PaginatedLegalEntityRespose, error)
-	Update(ctx context.Context, id string, entity *LegalEntity) error  
- 	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context, page, limit int, search string) (*PaginatedLegalEntityResponse, error)
+	Update(ctx context.Context, id string, entity *LegalEntity) error
+	Delete(ctx context.Context, id string) error
 }
 
-type PaginatedLegalEntityRespose struct {
-	Items    []LegalEntity  `json:"items"`
-	TotalItems int          `json:"total_items"`
-	TotalPages int          `json:"total_pages"`
-	CurrentPage int         `json:"current_page"`
-	PageSize    int         `json:"page_size"`
+type PaginatedLegalEntityResponse struct {
+	Items       []LegalEntity `json:"items"`
+	TotalItems  int           `json:"total_items"`
+	TotalPages  int           `json:"total_pages"`
+	CurrentPage int           `json:"current_page"`
+	PageSize    int           `json:"page_size"`
+}
+
+type IAnalyticsRepository interface {
+	SaveEvent(ctx context.Context, event *AnalyticsEvent) error
+}
+
+type IContentStorage interface {
+	Upload(ctx context.Context, fileKey string, file io.Reader) (url string, err error)
+	Delete(ctx context.Context, fileKey string) error
+}
+
+type IContentRepository interface {
+	Save(ctx context.Context, content *Content) (string, error)
+	GetByID(ctx context.Context, id string) (*Content, error)
+	GetAll(ctx context.Context, page, limit int, search string) (*PaginatedContentResponse, error)
 }

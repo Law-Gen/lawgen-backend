@@ -3,8 +3,8 @@ package Repositories
 import (
 	"context"
 	"errors"
+	
 	domain "lawgen/admin-service/Domain"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,7 +15,7 @@ type mongoLegalEntityRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoEntityRepository (db *mongo.Database) domain.LegalEntityRepository {
+func NewMongoEntityRepository (db *mongo.Database) domain.ILegalEntityRepository {
 	return &mongoLegalEntityRepository {
 		collection: db.Collection("legal_entity"),
 	}
@@ -55,7 +55,7 @@ func (r *mongoLegalEntityRepository) GetByID(ctx context.Context, id string) (*d
 	return &entity, nil
 }
 
-func (r *mongoLegalEntityRepository) GetAll(ctx context.Context, page, limit int, search string) (*domain.PaginatedLegalEntityRespose, error) {
+func (r *mongoLegalEntityRepository) GetAll(ctx context.Context, page, limit int, search string) (*domain.PaginatedLegalEntityResponse, error) {
 	opts := options.Find()
 	opts.SetSkip(int64((page - 1) * limit))
 	opts.SetLimit(int64(limit))
@@ -78,7 +78,7 @@ func (r *mongoLegalEntityRepository) GetAll(ctx context.Context, page, limit int
 	totalItems, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil { return  nil, err }
 
-	return &domain.PaginatedLegalEntityRespose{
+	return &domain.PaginatedLegalEntityResponse{
 		Items: entities,
 		TotalItems: int(totalItems),
 		TotalPages: (int(totalItems) + limit - 1) / limit,
