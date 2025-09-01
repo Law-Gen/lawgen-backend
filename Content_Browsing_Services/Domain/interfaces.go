@@ -35,3 +35,15 @@ type IContentRepository interface {
 	GetByID(ctx context.Context, id string) (*Content, error)
 	GetAll(ctx context.Context, page, limit int, search string) (*PaginatedContentResponse, error)
 }
+
+type FeedbackRepository interface {
+    Create(feedback *Feedback) error
+    GetByID(id string) (*Feedback, error)
+    List() ([]Feedback, error)
+}
+
+type FeedbackUsecase interface {
+    CreateFeedback(feedback *Feedback) error
+    GetFeedbackByID(id string) (*Feedback, error)
+    ListFeedbacks() ([]Feedback, error)
+}

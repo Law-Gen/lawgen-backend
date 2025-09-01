@@ -86,6 +86,10 @@ func main() {
 	contentController := controllers.NewContentController(contentUsecase)
 	analyticsController := controllers.NewAnalyticsController(analyticsUsecase, contentUsecase)
 
+	feedbackRepo := Repositories.NewMongoFeedbackRepository(db)
+  feedbackUsecase := usecases.NewFeedbackUsecase(feedbackRepo)
+  feedbackController := controllers.NewFeedbackController(feedbackUsecase)
+
 	// --- 5. ROUTER & SERVER ---
 	// The router takes the controllers and maps their methods to API endpoints.
 
@@ -95,6 +99,7 @@ func main() {
 		legalEntityController, 
 		contentController, 
 		analyticsController,
+		feedbackController,
 	)
 
 	// Start the Gin HTTP server.

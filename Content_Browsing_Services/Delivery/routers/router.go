@@ -3,7 +3,6 @@ package routers
 import (
 	"lawgen/admin-service/Delivery/controllers"
 
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,6 +10,7 @@ func NewRouter(
 	legalEntityController *controllers.LegalEntityController,
 	contentController *controllers.ContentController,
 	analyticsController *controllers.AnalyticsController,
+	FeedbackController *controllers.FeedbackController,
 ) *gin.Engine {
 	
 	router := gin.Default()
@@ -27,6 +27,13 @@ func NewRouter(
 			legalEntityAPI.PUT("/:id", legalEntityController.UpdateLegalEntity)
 			legalEntityAPI.DELETE("/:id", legalEntityController.DeleteLegalEntity)
 		}
+
+		feedbackAPI := apiV1.Group("/feedback")
+        {
+            feedbackAPI.POST("", FeedbackController.CreateFeedback)
+            feedbackAPI.GET("/:id", FeedbackController.GetFeedbackByID)
+            feedbackAPI.GET("", FeedbackController.ListFeedbacks)
+        }
 
 		// Public Content & Analytics Routes
 		contentAPI := apiV1.Group("/contents")
@@ -51,3 +58,4 @@ func NewRouter(
 
 	return router
 }
+
