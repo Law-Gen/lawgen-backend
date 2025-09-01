@@ -12,7 +12,8 @@ service LegalAssistant {
 
 // Question request message
 message QuestionRequest {
-  string query = 1;
+    string query = 1;
+    int32 k = 2;  // Number of relevant documents to return
 }
 
 // Response message for streaming answers

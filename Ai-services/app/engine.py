@@ -4,45 +4,27 @@ import chromadb
 import json
 import time
 import logging
-import os
-from chromadb.utils import embedding_functions 
-from dotenv import load_dotenv
-from langchain.memory import ConversationBufferMemory
-from dotenv import load_dotenv
-from typing import List, Dict, Any, AsyncGenerator, Iterator
-from pydantic import BaseModel, Field
 from typing import Iterator, Dict, List, Any
+from chromadb.utils import embedding_functions 
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
-google_api_key = os.getenv("GOOGLE_API_KEY") 
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH_ABS = os.path.join(SCRIPT_DIR, "legal_db")
 
-memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    return_messages=True
-)
-
-RELEVANCE_THRESHOLD = 0.4
-
+# Initialize ChromaDB client and collection
 client = chromadb.PersistentClient(path=DB_PATH_ABS)
 collection = client.get_or_create_collection(
     name="ethiopian_law",
     embedding_function=embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    )
+    ),
+    metadata={"hnsw:space": "cosine"}
 )
 
-class LegalResponse(BaseModel):
-    content: str = Field(description="The content of the legal document chunk")
-    metadata: Dict = Field(description="Metadata about the document chunk")
-    score: float = Field(description="Relevance score (higher is more relevant)")
+RELEVANCE_THRESHOLD = 0.4
 
 def filter_documents_by_relevance(documents, metadatas, distances, threshold=0.4):
     """Filter documents based on relevance score"""
@@ -74,46 +56,41 @@ def get_relevant_documents(query: str, n_results: int = 5) -> List[Dict]:
     relevant_docs.sort(key=lambda x: x["score"], reverse=True)
     return relevant_docs[:n_results]
 
-async def ask_question(query: str, k: int = 5) -> AsyncGenerator[str, None]:
-    #Returns the k most relevant legal document chunks for the query in a simplified format.
+def ask_question(query: str, k: int = 5) -> Iterator[Dict[str, Any]]:
+    """
+    Returns the k most relevant legal document chunks for the query.
+    
+    Args:
+        query (str): The user's query about Ethiopian law
+        k (int): Number of relevant documents to return (default: 5)
+    """
     try:
-        results = collection.query(
-            query_texts=[query],
-            n_results=k * 2,
-            include=['documents', 'metadatas']
-        )
-
-        if not results or not results.get("documents"):
-            yield json.dumps({
-                "results": [],
-                "message": "No relevant legal documents found for your query."
+        if not query or not isinstance(query, str):
+            raise ValueError("Query must be a non-empty string")
+            
+        relevant_docs = get_relevant_documents(query, n_results=k)
+        
+        formatted_results = []
+        for doc in relevant_docs:
+            formatted_results.append({
+                "content": doc["content"],
+                "metadata": {
+                    "source": doc["metadata"].get("source", "Unknown Source"),
+                    "article_number": doc["metadata"].get("article_number", "N/A"),
+                    "topics": doc["metadata"].get("topics", [])
+                }
             })
-            return
-
-        # Process and filter relevant documents
-        output_docs = []
-        for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-            # Extract only the necessary information
-            formatted_doc = {
-                "content": doc,
-                "source": meta.get("source", "Unknown Source"),
-                "article_number": meta.get("article_number", "N/A"),
-                "topics": meta.get("topics", [])
-            }
-            output_docs.append(formatted_doc)
-
-        output_docs = output_docs[:k]
-
+        
         yield json.dumps({
-            "results": output_docs,
-            "message": f"Found {len(output_docs)} relevant legal documents."
+            "results": formatted_results,
+            "message": f"Found {len(formatted_results)} relevant legal documents."
         })
-
+        
     except Exception as e:
         logger.error(f"Error in ask_question: {str(e)}")
         yield json.dumps({
             "results": [],
-            "message": "An error occurred while processing your request."
+            "message": f"An error occurred: {str(e)}"
         })
 
 def preprocess_legal_document(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -152,37 +129,3 @@ def extract_topics(content: str) -> List[str]:
             topics.add(topic)
     
     return list(topics) if topics else ["general"]
-
-def ask_question(query: str) -> Iterator[Dict[str, Any]]:
-    """
-    Synchronous wrapper for document retrieval
-    Returns relevant documents with their references and stored topics
-    """
-    try:
-        if not query or not isinstance(query, str):
-            raise ValueError("Query must be a non-empty string")
-            
-        relevant_docs = get_relevant_documents(query, n_results=5)
-        
-        formatted_results = []
-        for doc in relevant_docs:
-            formatted_results.append({
-                "content": doc["content"],
-                "metadata": {
-                    "source": doc["metadata"].get("source", ""),
-                    "article_number": doc["metadata"].get("article_number", ""),
-                    "topics": doc["metadata"].get("topics", "").split(", ") if doc["metadata"].get("topics") else ["general"]
-                }
-            })
-        
-        yield {
-            "results": formatted_results,
-            "message": f"Found {len(formatted_results)} relevant legal documents."
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in ask_question: {str(e)}")
-        yield {
-            "results": [],
-            "message": f"An error occurred: {str(e)}"
-        }

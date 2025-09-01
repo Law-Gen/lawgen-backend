@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import grpc
+import logging
+import time
+import json
+from concurrent import futures
+
 from app.engine import ask_question
 from app.legal_assistant_pb2 import (
     QuestionResponse, 
@@ -11,11 +17,6 @@ from app.legal_assistant_pb2_grpc import (
     LegalAssistantServicer, 
     add_LegalAssistantServicer_to_server
 )
-import grpc
-from concurrent import futures
-import time
-import logging
-import json
 
 app = FastAPI(
     title="Ethiopian Legal AI Assistant",
@@ -35,7 +36,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class QueryRequest(BaseModel):
-    query: str 
+    query: str
+    k: int = Field(default=5, ge=1, le=20, description="Number of relevant documents to return")
 
 @app.post("/ask")
 async def ask_stream(req: QueryRequest):
@@ -43,10 +45,10 @@ async def ask_stream(req: QueryRequest):
     try:
         if not req.query.strip():
             return {"error": "Query cannot be empty"}            
-        logger.info(f"Received query: {req.query[:100]}...")
+        logger.info(f"Received query: {req.query[:100]}... with k={req.k}")
         
         return StreamingResponse(
-            ask_question(req.query),
+            ask_question(req.query, k=req.k),
             media_type="application/json"
         )
     except Exception as e:
@@ -66,24 +68,22 @@ async def health_check():
 
 class LegalAssistantService(LegalAssistantServicer):
     def AskQuestion(self, request, context):
-        """
-        Handles incoming legal questions and streams back responses
-        """
         try:
             if not request.query.strip():
                 context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Query cannot be empty")
             
-            logger.info(f"Received query: {request.query[:100]}...")
+            k = max(1, min(request.k, 20)) if request.k else 5
+            logger.info(f"Received query: {request.query[:100]}... with k={k}")
             
-            for response in ask_question(request.query):
-                # Convert the structured response to QuestionResponse
+            for response in ask_question(request.query, k=k):
+                result = json.loads(response)
                 yield QuestionResponse(
-                    text=json.dumps(response, indent=2),  # Serialize entire response as JSON
-                    references=[doc["metadata"]["source"] for doc in response.get("results", [])]
+                    text=json.dumps(result, indent=2),
+                    references=[doc.get("source", "") for doc in result.get("results", [])]
                 )
                 
         except Exception as e:
-            logger.error(f"Error processing query: {str(e)}", exc_info=True)
+            logger.error(f"Error processing query: {str(e)}")
             context.abort(grpc.StatusCode.INTERNAL, f"An error occurred: {str(e)}")
 
     def HealthCheck(self, request, context):
