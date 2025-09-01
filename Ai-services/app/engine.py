@@ -110,22 +110,3 @@ def preprocess_legal_document(content: str, metadata: Dict[str, Any]) -> Dict[st
         "metadata": enhanced_metadata
     }
 
-def extract_topics(content: str) -> List[str]:
-    """Extract key topics from document content"""
-    # Basic topic extraction based on key terms
-    topics = set()
-    topic_patterns = {
-        "human_rights": r"human rights|fundamental rights|basic rights",
-        "economic": r"economic|financial|monetary|commerce",
-        "social": r"social|cultural|society|community",
-        "political": r"political|government|democracy|election",
-        "justice": r"justice|court|judicial|legal",
-        "education": r"education|learning|teaching|school",
-        "health": r"health|medical|healthcare",
-    }
-    
-    for topic, pattern in topic_patterns.items():
-        if re.search(pattern, content.lower()):
-            topics.add(topic)
-    
-    return list(topics) if topics else ["general"]
