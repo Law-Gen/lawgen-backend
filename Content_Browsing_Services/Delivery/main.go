@@ -43,7 +43,12 @@ func main() {
 	legalEntityUsecase := usecases.NewLegalEntityUsecase(legalEntityRepo)
 	legalEntityController := controllers.NewLegalEntityController(legalEntityUsecase)
 
-	router := routers.NewRouter(legalEntityController)
+	//feedback
+	feedbackRepo := Repositories.NewMongoFeedbackRepository(db)
+    feedbackUsecase := usecases.NewFeedbackUsecase(feedbackRepo)
+    feedbackController := controllers.NewFeedbackController(feedbackUsecase)
+
+	router := routers.NewRouter(legalEntityController, feedbackController)
 	log.Println("Starting Gin server on http://localhost:8080")
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Fatal Error: Could not start Gin server: %s\n", err)

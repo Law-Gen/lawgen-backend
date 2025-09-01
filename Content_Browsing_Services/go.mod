@@ -3,7 +3,7 @@ module lawgen/admin-service
 go 1.24.5
 
 require (
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/google/uuid v1.6.0
 	go.mongodb.org/mongo-driver v1.17.4
 )
 
