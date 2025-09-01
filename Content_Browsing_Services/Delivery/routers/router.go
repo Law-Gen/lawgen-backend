@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(LegalEntityController *controllers.LegalEntityController) *gin.Engine {
+func NewRouter(LegalEntityController *controllers.LegalEntityController, FeedbackController *controllers.FeedbackController) *gin.Engine {
 	router := gin.Default()
 
 	apiV1 := router.Group("/api/v1") 
@@ -19,7 +19,15 @@ func NewRouter(LegalEntityController *controllers.LegalEntityController) *gin.En
 					legalEntityAPI.PUT("/:id", LegalEntityController.UpdateLegalEntity)
 					legalEntityAPI.DELETE("/:id", LegalEntityController.DeleteLegalEntity)
 				}
+	
+		  feedbackAPI := apiV1.Group("/feedback")
+        {
+            feedbackAPI.POST("", FeedbackController.CreateFeedback)
+            feedbackAPI.GET("/:id", FeedbackController.GetFeedbackByID)
+            feedbackAPI.GET("", FeedbackController.ListFeedbacks)
+        }
 		}
 	
 	return router
 }
+

@@ -17,3 +17,15 @@ type PaginatedLegalEntityRespose struct {
 	CurrentPage int         `json:"current_page"`
 	PageSize    int         `json:"page_size"`
 }
+
+type FeedbackRepository interface {
+    Create(feedback *Feedback) error
+    GetByID(id string) (*Feedback, error)
+    List() ([]Feedback, error)
+}
+
+type FeedbackUsecase interface {
+    CreateFeedback(feedback *Feedback) error
+    GetFeedbackByID(id string) (*Feedback, error)
+    ListFeedbacks() ([]Feedback, error)
+}
