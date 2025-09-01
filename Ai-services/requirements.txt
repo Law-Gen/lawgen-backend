@@ -22,3 +22,12 @@ streamlit
 # Since I moved the LLM from groq to gemini, I commented this package. If you want to check groq, you have to install this package.
 # groq
 # langchain-groq
+
+# gRPC Dependencies
+grpcio
+grpcio-tools
+protobuf
+
+# Testing
+pytest
+pytest-asyncio
