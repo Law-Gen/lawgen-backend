@@ -39,7 +39,7 @@ func NewRouter(
 		contentAPI := apiV1.Group("/contents")
 		{
 			contentAPI.GET("", contentController.GetAllContent)
-			contentAPI.GET("/:id/view", analyticsController.ViewContentAndRedirect)
+			contentAPI.GET("/:id", analyticsController.ViewContentAndRedirect)
 		}
 	}
 

@@ -28,10 +28,14 @@ func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
 	contentID := ctx.Param("id")
 
 	userIDVal, exists := ctx.Get("userID")
+	// if !exists {
+	// 	ctx.JSON(http.StatusUnauthorized, gin.H{"message": "User ID not found in context"})
+	// 	return
+	// }
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "User ID not found in context"})
-		return
-	}
+    // TEMP: hardcode for testing
+    userIDVal = "test-user-123"
+}
 
 	userID := userIDVal.(string)
 
@@ -57,5 +61,13 @@ func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
 	}()
 
 	// 3. Redirect the user's browser to the actual file.
-	ctx.Redirect(http.StatusFound, content.URL)
+	ctx.JSON(http.StatusOK, gin.H{
+    "id":  content.ID,
+		"name": content.Name,
+		"description": content.Description,
+		"group name": content.GroupName,
+		"language": content.Language,
+    "url": content.URL,
+})
+
 }

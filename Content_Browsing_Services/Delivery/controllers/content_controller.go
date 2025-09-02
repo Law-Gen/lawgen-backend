@@ -37,8 +37,8 @@ func (c *ContentController) CreateContent(ctx *gin.Context) {
 	name := ctx.Request.FormValue("name")
 	description := ctx.Request.FormValue("description")
 	language := ctx.Request.FormValue("language")
-	if name == "" || language == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": "MISSING_FIELD", "message": "Missing required fields (name, language)."})
+	if name == ""{
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": "MISSING_FIELD", "message": "Missing required fields (name)."})
 		return
 	}
 	
