@@ -30,7 +30,7 @@ def filter_documents_by_relevance(documents, metadatas, distances, threshold=0.4
     """Filter documents based on relevance score"""
     relevant_docs = []
     for i, (doc, meta, distance) in enumerate(zip(documents, metadatas, distances)):
-        # Convert distance to similarity score (1 - distance)
+        # Convert distance to similarity score (1 - distance) for cosine
         similarity = 1 - distance
         if similarity >= threshold:
             relevant_docs.append({
@@ -41,7 +41,7 @@ def filter_documents_by_relevance(documents, metadatas, distances, threshold=0.4
     return relevant_docs
 
 def get_relevant_documents(query: str, n_results: int = 5) -> List[Dict]:
-    #Retrieve the k most relevant legal document chunks for a query.
+    """Retrieve the k most relevant legal document chunks for a query."""
     results = collection.query(
         query_texts=[query],
         n_results=n_results * 2,  # Get more results initially for filtering
@@ -56,9 +56,9 @@ def get_relevant_documents(query: str, n_results: int = 5) -> List[Dict]:
     relevant_docs.sort(key=lambda x: x["score"], reverse=True)
     return relevant_docs[:n_results]
 
-def ask_question(query: str, k: int = 5) -> Iterator[Dict[str, Any]]:
+def ask_question(query: str, k: int = 5) -> Iterator[str]:
     """
-    Returns the k most relevant legal document chunks for the query.
+    Yields the k most relevant legal document chunks for the query as JSON strings.
     
     Args:
         query (str): The user's query about Ethiopian law
@@ -78,23 +78,27 @@ def ask_question(query: str, k: int = 5) -> Iterator[Dict[str, Any]]:
                     "source": doc["metadata"].get("source", "Unknown Source"),
                     "article_number": doc["metadata"].get("article_number", "N/A"),
                     "topics": doc["metadata"].get("topics", [])
-                }
+                },
+                "score": doc["score"]
             })
         
-        yield json.dumps({
+        # Yield a single JSON object containing all results
+        response_data = {
             "results": formatted_results,
             "message": f"Found {len(formatted_results)} relevant legal documents."
-        })
+        }
+        yield json.dumps(response_data) + "\n"
         
     except Exception as e:
         logger.error(f"Error in ask_question: {str(e)}")
-        yield json.dumps({
+        error_response = {
             "results": [],
             "message": f"An error occurred: {str(e)}"
-        })
+        }
+        yield json.dumps(error_response) + "\n"
 
 def preprocess_legal_document(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-    #Preprocess legal documents before ingestion
+    """Preprocess legal documents before ingestion."""
     cleaned_content = re.sub(r'\s+', ' ', content).strip()
     article_match = re.search(r'Article\s+(\d+[A-ZaZ]?)', cleaned_content)
     article_number = article_match.group(1) if article_match else None
@@ -109,4 +113,3 @@ def preprocess_legal_document(content: str, metadata: Dict[str, Any]) -> Dict[st
         "content": cleaned_content,
         "metadata": enhanced_metadata
     }
-
