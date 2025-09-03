@@ -1,0 +1,69 @@
+# Variables
+@api_url = http://127.0.0.1:8000
+
+###
+# Health Check: Check if the API is running
+GET {{api_url}}/health
+Content-Type: application/json
+
+###
+# Ask (RAG Query): Get relevant legal documents for a query
+POST {{api_url}}/ask
+Content-Type: application/json
+
+{
+  "query": "What are the powers of the Prime Minister?",
+  "k": 3
+}
+
+###
+# Text-to-Speech (TTS): Convert text into an audio file
+# @name saveTTS
+POST {{api_url}}/text-to-speech
+Content-Type: application/json
+
+{
+  "text": "Hello, this is a test of the speech synthesis.",
+  "language": "en"
+}
+
+# To save the response to a file, you can use the REST Client's response handling.
+# After sending the request, click the "Save Response" icon or use the command palette.
+# Example: > ./responses/audio_en.mp3
+
+###
+# Text-to-Speech (TTS) - Amharic
+# @name saveTTS_am
+POST {{api_url}}/text-to-speech
+Content-Type: application/json
+
+{
+  "text": "ሰላም ይህ የንግግር ልምምድ ነው",
+  "language": "am"
+}
+
+# Example: > ./responses/audio_am.mp3
+
+###
+# Speech-to-Text (STT): Transcribe an audio file
+# Note: Replace 'path/to/your/audio.wav' with the actual path to an audio file on your system.
+# The file must be a valid audio format like WAV, MP3, or OGG.
+POST {{api_url}}/speech-to-text/en
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="audio.wav"
+Content-Type: audio/wav
+
+</path/to/your/audio.wav>
+--boundary--
+###
+# Text-to-Text Translation: Translate text between English and Amharic
+# @name translate_text
+POST {{api_url}}/translate
+Content-Type: application/json
+
+{
+  "text": "my lawyer is asshole, i need lawgen",
+  "target_lang": "am"
+}
