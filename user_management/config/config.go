@@ -19,6 +19,8 @@ type Config struct {
 	GoogleClientSecret string
 	OauthStateString    string
 	PORT 			 string
+	ENV				 string
+	URL 			 string
 }
 
 // AppConfig is the global config instance
@@ -46,6 +48,15 @@ func LoadConfig() {
 	if PORT == "" {
 		PORT = "8080" // Default port if not specified
 	}
+	ENV := os.Getenv("ENV")
+	if ENV == "" {
+		ENV = "development" // Default environment if not specified
+	}
+
+	URL := os.Getenv("URL")
+	if URL == "" {
+		URL = "http://localhost:8080" // Default URL if not specified
+	}
 
 	AppConfig = &Config{
 		DbName 			:   dbName,
@@ -58,6 +69,8 @@ func LoadConfig() {
 		GoogleClientSecret: googleClientSecret,
 		OauthStateString:    oauthStateString,
 		PORT: PORT,
+		ENV: ENV,
+		URL: URL,
 	}
 }
 

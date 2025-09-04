@@ -26,6 +26,8 @@ func main() {
 	refreshSecret := config.AppConfig.RefreshTokenSecret
 	accessExpiry := config.AppConfig.AccessTokenExpiry
 	refreshExpiry := config.AppConfig.RefreshTokenExpiry
+	url := config.AppConfig.URL
+	env := config.AppConfig.ENV
 
 	// Initialize MongoDB connection
 	db := database.InitMongoDB().Database(dbName)
@@ -36,7 +38,7 @@ func main() {
 	passwordResetRepo := repository.NewPasswordReset(db)
 	emailService := email.NewEmailService()
 	jwt := auth.NewJWT(accessSecret, refreshSecret, accessExpiry, refreshExpiry)
-	authUsecase := usecase.NewAuthUsecase(authRepo, tokenRepo, jwt, unActiveUserRepo, emailService, passwordResetRepo)
+	authUsecase := usecase.NewAuthUsecase(authRepo, tokenRepo, jwt, unActiveUserRepo, emailService, passwordResetRepo, url, env)
 	authController := controller.NewAuthController(authUsecase, jwt)
 
 

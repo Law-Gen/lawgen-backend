@@ -19,6 +19,8 @@ type AuthUsecase struct {
 	unactiveRepo domain.UnactiveUserRepo
 	emailService *email.EmailService
 	passRepo     domain.PasswordResetRepository
+	url         string
+	env         string
 }
 
 func NewAuthUsecase(
@@ -28,6 +30,8 @@ func NewAuthUsecase(
 	ar domain.UnactiveUserRepo,
 	es *email.EmailService,
 	passRepo domain.PasswordResetRepository,
+	url string,
+	env string,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:     ur,
@@ -37,6 +41,8 @@ func NewAuthUsecase(
 		unactiveRepo: ar,
 		emailService: es,
 		passRepo:     passRepo,
+		url:         url,
+		env:         env,
 	}
 }
 
@@ -74,7 +80,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, email, fullName, password s
 		return err
 	}
 
-	activationLink := "http://localhost:8080/auth/activate?token=" + user.ActivationToken + "&email=" + user.Email
+	activationLink := uc.url + "/auth/activate?token=" + user.ActivationToken + "&email=" + user.Email
 	go func() {
 		err := uc.emailService.SendActivationEmail(user.Email, activationLink)
 		if err != nil {
