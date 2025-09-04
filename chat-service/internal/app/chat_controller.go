@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
+	
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/util"
