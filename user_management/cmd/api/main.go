@@ -67,8 +67,8 @@ func main() {
 	route.UserRouter(r, userController, jwt, contentCreationLimiter, contentReadLimiter)
 
 
-	// Start the server on port 8080
-	if err := r.Run("localhost:8080"); err != nil {
+	// Start the server on the configured port
+	if err := r.Run(":" + config.AppConfig.PORT); err != nil {
 		panic("Failed to start server: " + err.Error())
 	}
 }

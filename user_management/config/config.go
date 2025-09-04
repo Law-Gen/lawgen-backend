@@ -18,6 +18,7 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	OauthStateString    string
+	PORT 			 string
 }
 
 // AppConfig is the global config instance
@@ -41,6 +42,10 @@ func LoadConfig() {
 	googleClientID := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 	googleClientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
 	oauthStateString := os.Getenv("OAUTH_STATE_STRING")
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		PORT = "8080" // Default port if not specified
+	}
 
 	AppConfig = &Config{
 		DbName 			:   dbName,
@@ -52,6 +57,7 @@ func LoadConfig() {
 		GoogleClientID:     googleClientID,
 		GoogleClientSecret: googleClientSecret,
 		OauthStateString:    oauthStateString,
+		PORT: PORT,
 	}
 }
 
