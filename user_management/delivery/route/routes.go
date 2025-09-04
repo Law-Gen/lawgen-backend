@@ -55,6 +55,19 @@ func UserRouter(r *gin.Engine, userController *controller.UserController, jwt *a
 	}
 }
 
+func SubscriptionRouter(r *gin.Engine, subscriptionController *controller.SubscriptionController, jwt *auth.JWT, contentCreationLimiter *limiter.Limiter, contentReadLimiter *limiter.Limiter) {
+    subscriptionGroup := r.Group("/subscriptions")
+    {
+        {
+            subscriptionGroup.GET("/plans", tollbooth_gin.LimitHandler(contentReadLimiter), subscriptionController.GetAllPlans)
+            subscriptionGroup.POST("/subscribe", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.AuthMiddleware(jwt),  subscriptionController.CreateSubscription)
+            subscriptionGroup.POST("/cancel", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.AuthMiddleware(jwt),  subscriptionController.CancelSubscription)
+        }
+    }
+}
+
+
+
 // HealthRouter registers a health check endpoint
 func HealthRouter(r *gin.Engine) {
     r.GET("/health", func(ctx *gin.Context) {
@@ -67,15 +80,15 @@ func HealthRouter(r *gin.Engine) {
 func NewRouter() *gin.Engine {
 	r := gin.Default()
     config := cors.Config{
-    AllowOrigins: []string{
-    "http://localhost:3000",
-    "https://your-production-site.com",
-    },
-    AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-    AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
-    ExposeHeaders:    []string{"Content-Length"},
-    AllowCredentials: true,
-    MaxAge:           12 * time.Hour,
+        AllowOrigins: []string{
+            "http://localhost:3000",
+            "https://your-production-site.com",
+        },
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
     }
     r.Use(cors.New(config))
 	r.LoadHTMLGlob("utils/*.html")

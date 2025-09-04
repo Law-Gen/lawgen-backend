@@ -204,6 +204,25 @@ func (mr *UserRepository) UpdateUserPassword(ctx context.Context, email string, 
 	}
 }
 
+func (mr *UserRepository) UpdateUserSubscriptionStatus(ctx context.Context, userID string, newStatus string) error {
+	idObj, _ := primitive.ObjectIDFromHex(userID)
+	filter := bson.M{"_id": idObj}
+	update := bson.M{
+		"$set": bson.M{
+			"subscription_status": newStatus,
+		},
+	}
+
+	if res, err := mr.collection.UpdateOne(ctx, filter, update); err != nil {
+		return err
+	} else {
+		if res.MatchedCount == 0 {
+			return errors.New("user not found")
+		}
+		return nil
+	}
+}
+
 func (ur *UserRepository) GetAllUsers(ctx context.Context, page, limit int) ([]domain.User, int64, error) {
 	setskip := int64((page - 1) * limit)
 	setlimit := int64(limit)

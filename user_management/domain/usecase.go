@@ -41,3 +41,9 @@ type AIUseCase interface {
 	GenerateIntialSuggestion(ctx context.Context, title string) (string, error)
 	GenerateBasedOnTags(ctx context.Context, content string, tags []string) (string, error)
 }
+
+type SubscriptionUsecase interface {
+	GetAllPlans(ctx context.Context) ([]SubscriptionPlan, error)
+	CreateSubscription(ctx context.Context, userID, planID string) error
+	CancelSubscription(ctx context.Context, userID string) error
+}

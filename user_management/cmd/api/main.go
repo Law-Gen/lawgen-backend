@@ -42,6 +42,11 @@ func main() {
 	authController := controller.NewAuthController(authUsecase, jwt)
 
 
+	subRepo := repository.NewSubscriptionPlanRepository(db)
+	subUsecase := usecase.NewSubscriptionUsecase(subRepo, authRepo)
+	subscriptionController := controller.NewSubscriptionController(subUsecase)
+
+
 	// Initialize OAuth usecase and controller
 	oauthUsecase := usecase.NewOAuthUsecase(authRepo, tokenRepo, jwt)
 	oauthController := controller.NewOAuthController(oauthUsecase)
@@ -67,6 +72,8 @@ func main() {
 
 	// user management routes
 	route.UserRouter(r, userController, jwt, contentCreationLimiter, contentReadLimiter)
+
+	route.SubscriptionRouter(r, subscriptionController, jwt, contentCreationLimiter, contentReadLimiter)
 
 
 	// Start the server on the configured port
