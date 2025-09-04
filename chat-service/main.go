@@ -2,7 +2,11 @@ package main
 
 import (
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/config"
+	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/repository"
+	mongoRepo "github.com/LAWGEN/lawgen-backend/chat-service/internal/repository/mongo"
+	redisRepo "github.com/LAWGEN/lawgen-backend/chat-service/internal/repository/redis"
+	client "github.com/LAWGEN/lawgen-backend/chat-service/internal/client"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase"
 
 	// "github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase/client"
@@ -17,6 +21,7 @@ import (
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/app"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
@@ -73,36 +78,58 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Initialize Redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisAddr,
+	})
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			log.Printf("Error closing Redis client: %v", err)
+		}
+	}()
+	_, err = rdb.Ping(context.Background()).Result()
+	if err != nil {
+		log.Fatalf("Failed to ping Redis: %v", err)
+	}
+	log.Println("Connected to Redis")
+
 	// Initialize repositories
-	// chatRepo := repository.NewChatRepository(db)
+	mongoSessionRepo := mongoRepo.NewSessionRepository(db)
+	mongoChatRepo := mongoRepo.NewChatRepository(db)
+
+	redisSessionRepo := redisRepo.NewRedisSessionRepository(rdb, cfg)
+	redisChatRepo := redisRepo.NewRedisChatRepository(rdb, cfg)
+
 	quizRepo := repository.NewQuizRepository(db)
 
 	// Initialize clients
-	// llmClient, err := client.NewLLMClient(cfg)
-	// if err != nil {
-	// 	log.Fatalf("Failed to create LLM client: %v", err)
-	// }
-	// Use the mock RAG client instead of the gRPC one
-	// ragClient, err := client.NewMockRAGClient()
-	// if err != nil {
-	// 	log.Fatalf("Failed to create Mock RAG client: %v", err)
-	// }
-	// defer ragClient.Close()
+	llmClient, err := client.NewLLMClient(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create LLM client: %v", err)
+	}
+	
+	var ragClient domain.RAGService
+	ragClient, err = client.NewRAGClient(cfg)
+		if err != nil {
+			log.Fatalf("Failed to initialize RAG client: %v", err)
+		}
+	defer ragClient.Close()
 
 	// Initialize use cases
-	// chatUseCase := usecase.NewChatUseCase(chatRepo)
+	chatUseCase := usecase.NewChatService(cfg,redisSessionRepo,redisChatRepo,mongoSessionRepo,mongoChatRepo,llmClient,ragClient)
 	quizUseCase := usecase.NewQuizUseCase(quizRepo)
 
 	// Initialize controllers
-	// chatController := app.NewChatController(chatUseCase, ragClient, llmClient)
 	quizController := app.NewQuizController(quizUseCase)
-
+	chatController := app.NewChatController(chatUseCase)
 	// Setup router
 	router := gin.Default()
+	router.StaticFile("/","./index.html")
 	router.Use(UserContextMiddleware())
 
 	// Register routes
-	app.RegisterRoutes(router, quizController, AdminAuthMiddleware())
+	app.RegisterQuizRoutes(router, quizController, AdminAuthMiddleware())
+	app.RegisterChatRoutes(router, chatController)
 
 	// Start server
 	srv := &http.Server{

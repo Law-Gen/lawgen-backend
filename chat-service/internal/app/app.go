@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine, quizController *QuizController, authMiddleware gin.HandlerFunc) {
+func RegisterQuizRoutes(router *gin.Engine, quizController *QuizController, authMiddleware gin.HandlerFunc) {
 	// Public routes
 	public := router.Group("/api/v1/quizzes")
 	{
@@ -33,5 +33,14 @@ func RegisterRoutes(router *gin.Engine, quizController *QuizController, authMidd
 		admin.POST("/:quizId/questions", quizController.AddQuestion)
 		admin.PUT("/:quizId/questions/:questionId", quizController.UpdateQuestion)
 		admin.DELETE("/:quizId/questions/:questionId", quizController.DeleteQuestion)
+	}
+}
+
+func RegisterChatRoutes(router *gin.Engine, chatController *ChatController){
+	public := router.Group("/api/v1/chats")
+	{
+		public.POST("/query", chatController.postQuery)
+		public.GET("/sessions",chatController.listSessions)
+		public.GET("/sessions/:sessionId/messages", chatController.getMessages)
 	}
 }
