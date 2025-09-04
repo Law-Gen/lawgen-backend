@@ -40,6 +40,10 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # Copy the compiled binary from the 'builder' stage.
 COPY --from=builder /app/server .
 
+# Copy the 'utils' directory which contains your .html templates.
+# This fixes the "pattern matches no files" panic.
+COPY --from=builder /app/utils ./utils
+
 # Expose the port the application will run on.
 # This should match the PORT in your .env file or config.
 EXPOSE 8080
