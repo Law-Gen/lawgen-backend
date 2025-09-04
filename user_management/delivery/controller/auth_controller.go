@@ -37,6 +37,7 @@ func (dto *UserDTO) ConvertToUserDomain() *domain.User {
 		FullName:  dto.FullName,
 		Email:     dto.Email,
 		Role:      dto.Role,
+		SubscriptionStatus: dto.SubscriptionStatus,
 		Profile: domain.UserProfile{
 			Gender:            dto.Profile.Gender,
 			ProfilePictureURL: dto.Profile.ProfilePictureURL,
@@ -57,6 +58,7 @@ func ConvertToUserDTO(u *domain.User) *UserDTO {
 		FullName:  u.FullName,
 		Email:     u.Email,
 		Role:      u.Role,
+		SubscriptionStatus: u.SubscriptionStatus,
 		Profile: UserProfileDTO{
 			Gender:            u.Profile.Gender,
 			ProfilePictureURL: u.Profile.ProfilePictureURL,
@@ -249,7 +251,7 @@ func (c *AuthController) RefreshAccessToken(ctx *gin.Context) {
 		refreshToken = req.RefreshToken
 	}
 
-	accessToken, refreshTokenNew, expiresIn, err := c.authUsecase.RefreshTokens(ctx.Request.Context(), refreshToken)
+	accessToken, refreshTokenNew, _, err := c.authUsecase.RefreshTokens(ctx.Request.Context(), refreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -258,7 +260,6 @@ func (c *AuthController) RefreshAccessToken(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
 		"refresh_token": refreshTokenNew,
-		"expires_in":    expiresIn,
 	})
 }
 

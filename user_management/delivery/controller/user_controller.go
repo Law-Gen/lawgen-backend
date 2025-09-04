@@ -2,9 +2,10 @@ package controller
 
 import (
 	"context"
-	"user_management/domain"
 	"net/http"
 	"strconv"
+	"time"
+	"user_management/domain"
 
 	"github.com/gin-gonic/gin"
 )
@@ -88,6 +89,18 @@ func (uc *UserController) HandleUpdateUser(c *gin.Context) {
 
 	gender := c.PostForm("gender")
 	birthDate := c.PostForm("birth_date")
+
+	// Validate and parse birthDate format (YYYY-MM-DD)
+	var birth_date time.Time
+	if birthDate != "" {
+		parsedDate, err := time.Parse("2006-01-02", birthDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid birth_date format. Use YYYY-MM-DD."})
+			return
+		}
+		birth_date = parsedDate
+	}
+
 	languagePreference := c.PostForm("language_preference")
 
 	file, err := c.FormFile("profile_picture")
@@ -104,7 +117,7 @@ func (uc *UserController) HandleUpdateUser(c *gin.Context) {
 	defer fileReader.Close()
 
 	ctx := c.Request.Context()
-	if err := uc.userUsecase.ProfileUpdate(ctx, userID, gender, birthDate, languagePreference, fileReader); err != nil {
+	if err := uc.userUsecase.ProfileUpdate(ctx, userID, gender, birth_date, languagePreference, fileReader); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

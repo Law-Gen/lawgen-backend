@@ -191,7 +191,7 @@ func (uc *AuthUsecase) ResendActivationEmail(ctx context.Context, email string) 
 		return err
 	}
 
-	activationLink := "http://localhost:8080/auth/activate?token=" + token + "&email=" + unActiveUser.Email
+	activationLink := uc.url + "/auth/activate?token=" + unActiveUser.ActivationToken + "&email=" + unActiveUser.Email
 	go func() {
 		err := uc.emailService.SendActivationEmail(unActiveUser.Email, activationLink)
 		if err != nil {

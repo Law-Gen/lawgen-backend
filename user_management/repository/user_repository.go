@@ -128,7 +128,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User,
 	return user.ConvertToUserDomain(), err
 }
 
-func (mr *UserRepository) UpdateUserProfile(ctx context.Context, gender string, birthDate string, languagePreference string, imagePath string, Email string) error {
+func (mr *UserRepository) UpdateUserProfile(ctx context.Context, gender string, birthDate time.Time, languagePreference string, imagePath string, Email string) error {
 	filter := bson.M{"email": Email}
 	update := bson.M{
 		"$set": bson.M{

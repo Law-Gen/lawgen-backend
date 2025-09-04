@@ -9,7 +9,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByID(ctx context.Context, id string) (*User, error)
-	UpdateUserProfile(ctx context.Context, gender string, birthDate string, languagePreference string, imagePath string, Email string) error
+	UpdateUserProfile(ctx context.Context, gender string, birthDate time.Time, languagePreference string, imagePath string, Email string) error
 	UpdateUserRole(ctx context.Context, role string, Email string) error
 	UpdateActiveStatus(ctx context.Context, email string) error
 	UpdateUserPassword(ctx context.Context, email string, newPasswordHash string) error

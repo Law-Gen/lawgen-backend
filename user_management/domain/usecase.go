@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -12,7 +13,7 @@ import (
 type UserUsecase interface {
 	Promote(ctx context.Context,userId, email string) error
 	Demote(ctx context.Context, userId, email string) error
-	ProfileUpdate(ctx context.Context, userid string, gender string, birthDate string, languagePreference string, file io.Reader) error
+	ProfileUpdate(ctx context.Context, userid string, gender string, birthDate time.Time, languagePreference string, file io.Reader) error
 	GetAllUsers(ctx context.Context, page int, limit int) ([]User, int64, error)
 }
 

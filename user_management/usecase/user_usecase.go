@@ -3,8 +3,9 @@ package usecase
 import (
 	"context"
 	"errors"
-	"user_management/domain"
 	"io"
+	"time"
+	"user_management/domain"
 )
 
 type UserUsecase struct {
@@ -58,7 +59,7 @@ func (upd *UserUsecase) Demote(ctx context.Context, userid, Email string) error 
 	return upd.userRepo.UpdateUserRole(ctx, string(domain.RoleUser), Email)
 }
 
-func (upd *UserUsecase) ProfileUpdate(ctx context.Context, userid string, gender string, birthDate string, languagePreference string, file io.Reader) error {
+func (upd *UserUsecase) ProfileUpdate(ctx context.Context, userid string, gender string, birthDate time.Time, languagePreference string, file io.Reader) error {
 	user, err := upd.userRepo.FindByID(ctx, userid)
 	if err != nil {
 		return err

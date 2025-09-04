@@ -1,6 +1,7 @@
 package route
 
 import (
+	"time"
 	"user_management/delivery/controller"
 	"user_management/infrastructure/auth"
 	"user_management/infrastructure/middleware"
@@ -8,6 +9,7 @@ import (
 	"github.com/didip/tollbooth/v7/limiter"
 	"github.com/didip/tollbooth_gin"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -64,6 +66,18 @@ func HealthRouter(r *gin.Engine) {
 // NewRouter initializes the Gin engine and registers all routes
 func NewRouter() *gin.Engine {
 	r := gin.Default()
+    config := cors.Config{
+    AllowOrigins: []string{
+    "http://localhost:3000",
+    "https://your-production-site.com",
+    },
+    AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+    AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+    ExposeHeaders:    []string{"Content-Length"},
+    AllowCredentials: true,
+    MaxAge:           12 * time.Hour,
+    }
+    r.Use(cors.New(config))
 	r.LoadHTMLGlob("utils/*.html")
     HealthRouter(r) // Register health check endpoint
 	return r
