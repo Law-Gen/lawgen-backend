@@ -12,13 +12,11 @@ func NewRouter(
 	analyticsController *controllers.AnalyticsController,
 	FeedbackController *controllers.FeedbackController,
 ) *gin.Engine {
-	
 	router := gin.Default()
 
-	// --- Public API Group ---
+	// --- Public API ---
 	apiV1 := router.Group("/api/v1")
 	{
-		// Legal Entity Routes
 		legalEntityAPI := apiV1.Group("/legal-entities")
 		{
 			legalEntityAPI.POST("", legalEntityController.CreateLegalEntity)
@@ -29,33 +27,36 @@ func NewRouter(
 		}
 
 		feedbackAPI := apiV1.Group("/feedback")
-        {
-            feedbackAPI.POST("", FeedbackController.CreateFeedback)
-            feedbackAPI.GET("/:id", FeedbackController.GetFeedbackByID)
-            feedbackAPI.GET("", FeedbackController.ListFeedbacks)
-        }
-
-		// Public Content & Analytics Routes
-		contentAPI := apiV1.Group("/contents")
 		{
-			contentAPI.GET("", contentController.GetAllContent)
-			contentAPI.GET("/:id", analyticsController.ViewContentAndRedirect)
+			feedbackAPI.POST("", FeedbackController.CreateFeedback)
+			feedbackAPI.GET("/:id", FeedbackController.GetFeedbackByID)
+			feedbackAPI.GET("", FeedbackController.ListFeedbacks)
 		}
+
+		contentsAPI := apiV1.Group("/contents")
+		{
+			contentsAPI.GET("", contentController.GetAllContent)
+			contentsAPI.GET("/:id/view", analyticsController.ViewContentAndRedirect)
+			contentsAPI.GET("/group/:groupID", contentController.GetContentsByGroupID)
+		}
+
+	
+		enterpriseAPI := apiV1.Group("/enterprise/analytics")
+		{
+				enterpriseAPI.GET("/query-trends", analyticsController.GetQueryTrends)
+		}
+
 	}
 
-	// --- Admin API Group (for protected routes) ---
+
 	adminV1 := router.Group("/api/v1/admin")
-	// This is where you would apply your admin-only JWT middleware
-	// adminV1.Use(Infrastructure.GinAdminAuthMiddleware())
 	{
-		// Admin Content Management Routes
 		adminContentAPI := adminV1.Group("/contents")
 		{
 			adminContentAPI.POST("", contentController.CreateContent)
-			// You would add admin-only GET, PUT, DELETE for content here
+			adminContentAPI.DELETE("/:id", contentController.DeleteContent)
 		}
 	}
 
 	return router
 }
-

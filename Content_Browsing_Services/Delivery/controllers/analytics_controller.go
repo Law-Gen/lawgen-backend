@@ -2,17 +2,20 @@ package controllers
 
 import (
 	"context"
+
+	"net/http"
+	"strconv"
+	"time"
+
 	domain "lawgen/admin-service/Domain"
 	usecases "lawgen/admin-service/Usecases"
-	"log"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AnalyticsController struct {
 	analyticsUsecase *usecases.AnalyticsUsecase
-	contentUsecase   *usecases.ContentUsecase // Needs content usecase to get the URL
+	contentUsecase   *usecases.ContentUsecase
 }
 
 func NewAnalyticsController(analyticsUC *usecases.AnalyticsUsecase, contentUC *usecases.ContentUsecase) *AnalyticsController {
@@ -22,52 +25,69 @@ func NewAnalyticsController(analyticsUC *usecases.AnalyticsUsecase, contentUC *u
 	}
 }
 
-// ViewContentAndRedirect logs an event and redirects the user to the PDF.
-// GET /api/v1/contents/:id/view
-func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
-	contentID := ctx.Param("id")
 
-	userIDVal, exists := ctx.Get("userID")
-	// if !exists {
-	// 	ctx.JSON(http.StatusUnauthorized, gin.H{"message": "User ID not found in context"})
-	// 	return
-	// }
-	if !exists {
-    // TEMP: hardcode for testing
-    userIDVal = "test-user-123"
+func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
+    contentID := ctx.Param("id")
+
+    // Get user info from context (populated by middleware)
+    userID, _ := ctx.Get("userID")
+    age, _ := ctx.Get("age")
+    gender, _ := ctx.Get("gender")
+
+    // Fetch content metadata
+    content, err := c.contentUsecase.FetchContentByID(ctx.Request.Context(), contentID)
+    if err != nil {
+        if err == domain.ErrNotFound {
+            ctx.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND", "message": "Content not found."})
+        } else {
+            ctx.JSON(http.StatusInternalServerError, gin.H{"code": "SERVER_ERROR", "message": err.Error()})
+        }
+        return
+    }
+
+    // Log analytics asynchronously
+    go func() {
+        bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        _ = c.analyticsUsecase.LogContentView(bgCtx, userID.(string), content.ID, content.Name, age.(int), gender.(string))
+    }()
+
+    // Return metadata
+    ctx.JSON(http.StatusOK, content)
 }
 
-	userID := userIDVal.(string)
 
-	// 1. Fetch the content metadata to get the S3 URL.
-	content, err := c.contentUsecase.FetchContentByID(ctx.Request.Context(), contentID)
+// === New: Enterprise Query Trends ===
+func (c *AnalyticsController) GetQueryTrends(ctx *gin.Context) {
+	startDate := ctx.Query("start_date")
+	endDate := ctx.Query("end_date")
+	limitStr := ctx.DefaultQuery("limit", "10")
+
+	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		if err == domain.ErrNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND", "message": "Content not found."})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"code": "SERVER_ERROR", "message": err.Error()})
-		}
+		ctx.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_INPUT", "message": "limit must be a number"})
 		return
 	}
 
-	// 2. Log the analytics event in the background (as a goroutine)
-	// so it doesn't slow down the redirect for the user.
-	go func() {
-		err := c.analyticsUsecase.LogContentView(context.Background(), userID, contentID)
-		if err != nil {
-			// This should be logged to your monitoring system (e.g., Sentry, Datadog)
-			log.Printf("ERROR: Failed to log content view analytic: %v", err)
-		}
-	}()
+	// AuthZ check (role must be enterprise)
+	role, exists := ctx.Get("role")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "User not logged in"})
+		return
+	}
 
-	// 3. Redirect the user's browser to the actual file.
-	ctx.JSON(http.StatusOK, gin.H{
-    "id":  content.ID,
-		"name": content.Name,
-		"description": content.Description,
-		"group name": content.GroupName,
-		"language": content.Language,
-    "url": content.URL,
-})
+	if role != "enterprise" {
+		ctx.JSON(http.StatusForbidden, gin.H{"code": "ACCESS_DENIED", "message": "Not an enterprise user"})
+		return
+	}
 
+	result, err := c.analyticsUsecase.GetQueryTrends(ctx.Request.Context(), startDate, endDate, limit)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"code": "SERVER_ERROR", "message": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, result)
 }
+
+

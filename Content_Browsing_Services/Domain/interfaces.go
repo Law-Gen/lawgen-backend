@@ -23,6 +23,7 @@ type PaginatedLegalEntityResponse struct {
 
 type IAnalyticsRepository interface {
 	SaveEvent(ctx context.Context, event *AnalyticsEvent) error
+	GetQueryTrends(ctx context.Context, startDate, endDate string, limit int) (*QueryTrendsResult, error)
 }
 
 type IContentStorage interface {
@@ -33,7 +34,10 @@ type IContentStorage interface {
 type IContentRepository interface {
 	Save(ctx context.Context, content *Content) (string, error)
 	GetByID(ctx context.Context, id string) (*Content, error)
-	GetAll(ctx context.Context, page, limit int, search string) (*PaginatedContentResponse, error)
+	GetAll(ctx context.Context, page, limit int) (*PaginatedGroupResponse, error)
+	GetContentByGroup(ctx context.Context, groupID string, page, limit int) (*PaginatedContentResponse, error)
+	FindOneByGroupName(ctx context.Context, groupName string) (*Content, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type FeedbackRepository interface {

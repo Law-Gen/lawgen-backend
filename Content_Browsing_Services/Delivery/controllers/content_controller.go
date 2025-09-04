@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"errors"
+	"fmt"
+	domain "lawgen/admin-service/Domain"
 	usecases "lawgen/admin-service/Usecases"
 	"net/http"
 	"strconv"
@@ -48,7 +51,7 @@ func (c *ContentController) CreateContent(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"message": "Content added.", "id": createdContent.ID, "url": createdContent.URL})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Content added.", "id": createdContent.ID, "url": createdContent.URL, "group_id": createdContent.GroupID})
 }
 
 // GetAllContent handles the PUBLIC endpoint for listing all available content.
@@ -56,12 +59,49 @@ func (c *ContentController) CreateContent(ctx *gin.Context) {
 func (c *ContentController) GetAllContent(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	search := ctx.Query("search")
+	
 
-	response, err := c.usecase.FetchAllContent(ctx.Request.Context(), page, limit, search)
+	response, err := c.usecase.FetchAllGroups(ctx.Request.Context(), page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"code": "SERVER_ERROR", "message": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, response)
+}
+
+func (c *ContentController) GetContentsByGroupID(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+	page := 1
+	limit := 10
+
+	if p := ctx.Query("page"); p != "" {
+		fmt.Sscan(p, &page)
+	}
+
+	if l := ctx.Query("limit"); l != "" {
+		fmt.Sscan(l, &limit)
+	}
+
+	contents, err := c.usecase.GetContentsByGroupID(ctx.Request.Context(), groupID, page, limit)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, contents)
+}
+
+func (c *ContentController) DeleteContent(ctx *gin.Context) {
+    id := ctx.Param("id")
+
+    if err := c.usecase.DeleteContent(ctx, id); err != nil {
+        if errors.Is(err, domain.ErrNotFound){
+            ctx.JSON(http.StatusNotFound, gin.H{"error": "content not found"})
+            return
+        }
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{"message": "content deleted successfully"})
 }
