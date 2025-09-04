@@ -5,7 +5,11 @@
 # Health Check: Check if the API is running
 GET {{api_url}}/health
 Content-Type: application/json
-
+#response
+{
+  "status": "healthy",
+  "timestamp": 1756970334.2848475
+}
 ###
 # Ask (RAG Query): Get relevant legal documents for a query
 POST {{api_url}}/ask
@@ -16,6 +20,30 @@ Content-Type: application/json
   "k": 3
 }
 
+#sample response
+{
+  "results": [
+    {
+      "content": "Article 74 Powers and Functions of the Prime Minister 1. The Prime Minister is the Chief Executive, the Chairman of the Council of Ministers, and the Commander-in-Chief of the national armed forces. 2. The Prime Minister shall submit for approval to the House of Peoples\u2019 Representatives nominees for ministerial posts from among members of the two Houses or from among persons who are not members of either House and possess the required quali\ufb01cations. 3. He shall follow up and ensure the implementation of laws, policies, directives and other decisions adopted by the House of Peoples\u2019 Representatives. 4. He leads the Council of Ministers, coordinates its activities and acts as its representative. 5. He exercises overall supervision over the implementation of policies, regulations, directives and decisions adopted by the Council of Ministers. 6. He exercises overall supervision over the implementation of the country\u2019s foreign policy. 7. He selects and submits for approval to the House of Peoples\u2019 Representatives nominations for posts of Commissioners, the President and Vice-President of the Federal Supreme Court and the Auditor General. 8. He supervises the conduct and e\ufb03ciency of the Federal administration and takes such corrective measures as are necessary. 9. He appoints high civilian o\ufb03cials of the Federal Government other than those referred to in sub-Articles 2 and 3 of this Article. 10. In accordance with law enacted or decision adopted by the House of Peoples\u2019 Representatives, he recommends to the President nominees for the award of medals, prizes and gifts. 11. He shall submit to the House of Peoples\u2019 Representatives periodic reports on work accomplished by the Executive as well as on its plans and proposals. 12. He shall discharge all responsibilities entrusted to him by this Constitution and other laws. 13. He shall obey and enforce the Constitution.",
+      "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+      "article_number": "74",
+      "topics": "Prime Minister, powers, functions, Chief Executive, Commander-in-Chief, appointments, supervision, reporting"
+    },
+    {
+      "content": "CHAPTER EIGHT THE EXECUTIVE Article 72 The Powers of the Executive 1. The Highest executive powers of the Federal Government are vested in the Prime Minister and in the Council of Ministers. 2. The Prime Minister and the Council of Ministers are responsible to the House of Peoples\u2019 Representatives. In the exercise of State functions, members of the Council of Ministers are collectively responsible for all decisions they make as a body. 3. Unless otherwise provided in this Constitution the term of o\ufb03ce of the Prime Minister is for the duration of the mandate of the House of Peoples\u2019 Representatives.",
+      "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+      "article_number": "72",
+      "topics": "Executive, Federal Government, Prime Minister, Council of Ministers, responsibility, term of o\ufb03ce"
+    },
+    {
+      "content": "Article 73 Appointment of the Prime Minister 1. The Prime Minister shall be elected from among members of the House of Peoples\u2019 Representatives. 2. Power of Government shall be assumed by the political party or a coalition of political parties that constitutes a majority in the House of Peoples\u2019 Representatives.",
+      "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+      "article_number": "73",
+      "topics": "Prime Minister, appointment, election, House of Peoples' Representatives, political parties, government"
+    }
+  ],
+  "message": "Found 3 relevant legal documents."
+}
 ###
 # Text-to-Speech (TTS): Convert text into an audio file
 # @name saveTTS
@@ -57,6 +85,11 @@ Content-Type: audio/wav
 
 </path/to/your/audio.wav>
 --boundary--
+
+# sample response
+{
+  "text": ""
+}
 ###
 # Text-to-Text Translation: Translate text between English and Amharic
 # @name translate_text
@@ -66,4 +99,9 @@ Content-Type: application/json
 {
   "text": "my lawyer is asshole, i need lawgen",
   "target_lang": "am"
+}
+
+# sample response
+{
+  "translated_text": "ጠበቃዬ አሞሌ ነው, i need lawgen"
 }

@@ -74,12 +74,9 @@ def ask_question(query: str, k: int = 5) -> Iterator[str]:
         for doc in relevant_docs:
             formatted_results.append({
                 "content": doc["content"],
-                "metadata": {
-                    "source": doc["metadata"].get("source", "Unknown Source"),
-                    "article_number": doc["metadata"].get("article_number", "N/A"),
-                    "topics": doc["metadata"].get("topics", [])
-                },
-                "score": doc["score"]
+                "source": doc["metadata"].get("source", "Unknown Source"),
+                "article_number": doc["metadata"].get("article_number", "N/A"),
+                "topics": doc["metadata"].get("topics", [])
             })
         
         # Yield a single JSON object containing all results
