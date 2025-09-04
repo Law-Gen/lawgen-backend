@@ -8,6 +8,7 @@ import (
 
 	"lawgen/admin-service/Delivery/controllers"
 	"lawgen/admin-service/Delivery/routers"
+	domain "lawgen/admin-service/Domain"
 	infrastructure "lawgen/admin-service/Infrastructure"
 	"lawgen/admin-service/Repositories"
 	usecases "lawgen/admin-service/Usecases"
@@ -58,12 +59,29 @@ func main() {
 	
 	// Initialize the repository for Legal Entities (uses MongoDB).
 	legalEntityRepo := Repositories.NewMongoEntityRepository(db)
-	
-	// Initialize the repository for file storage (uses Azure Blob Storage).
+
+	// Initialize the repository for file storage (uses Azure Blob Storage or AWS S3).
 	// If this fails (e.g., missing credentials), the application cannot start.
-	contentStorage, err := infrastructure.NewAzureBlobStorage()
-	if err != nil { 
-		log.Fatalf("Fatal Error: Could not create Azure Blob storage: %v", err) 
+	var contentStorage domain.IContentStorage
+	provider := os.Getenv("STORAGE_PROVIDER")
+	switch provider {
+	case "azure":
+		contentStorage, err = infrastructure.NewAzureBlobStorage()
+		if err != nil {
+        log.Fatalf("Failed to initialize Azure Blob Storage: %v", err)
+    }
+	case "aws":
+		contentStorage, err = infrastructure.NewAwsS3Storage()
+		if err != nil {
+        log.Fatalf("Failed to initialize AWS S3 Storage: %v", err)
+    }
+	default:
+		//Default to Azure
+		log.Println("No STORAGE_PROVIDER specified, defaulting to Azure Blob Storage")
+		contentStorage, err = infrastructure.NewAzureBlobStorage()
+		if err != nil {
+			log.Fatalf("Failed to initialize Azure Blob Storage: %v", err)
+		}
 	}
 	
 	// Initialize the repository for content metadata (uses MongoDB).
