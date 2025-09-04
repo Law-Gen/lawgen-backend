@@ -16,13 +16,13 @@ RUN go install github.com/swaggo/swag/cmd/swag@latest
 # Copy the rest of the application source code.
 COPY . .
 
-RUN /go/bin/swag init -g ./delivery/main.go
+RUN /go/bin/swag init -g ./cmd/api/main.go
 
 # Build the Go application.
 # -o /app/server specifies the output path for the binary.
 # CGO_ENABLED=0 is important for creating a static binary that doesn't depend on system C libraries.
 # -ldflags="-w -s" strips debugging information, making the binary smaller.
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/server ./delivery/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/server ./cmd/api/main.go
 
 
 # --- Stage 2: Final Image ---
