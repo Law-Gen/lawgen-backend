@@ -36,11 +36,12 @@ func RegisterQuizRoutes(router *gin.Engine, quizController *QuizController, auth
 	}
 }
 
-func RegisterChatRoutes(router *gin.Engine, chatController *ChatController){
+func RegisterChatRoutes(router *gin.Engine, chatController *ChatController) {
 	public := router.Group("/api/v1/chats")
 	{
 		public.POST("/query", chatController.postQuery)
-		public.GET("/sessions",chatController.listSessions)
+		public.GET("/sessions", chatController.listSessions)
 		public.GET("/sessions/:sessionId/messages", chatController.getMessages)
+		public.POST("/voice-query", VoiceChatHandler(chatController.chatService))
 	}
 }

@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -136,7 +134,20 @@
       <button id="sendBtn">Send</button>
     </div>
     <div id="status"></div>
+
+    <h2>Voice Chat</h2>
+    <div id="voice-chat-panel" class="panel">
+      <input type="file" id="voiceFile" accept="audio/*">
+      <select id="voiceLang">
+        <option value="en">English</option>
+        <option value="am">Amharic</option>
+      </select>
+      <button id="sendVoiceBtn">Send Voice Query</button>
+      <audio id="voicePlayer" controls style="display:none; margin-top:10px;"></audio>
+      <div id="voiceStatus"></div>
+    </div>
   </div>
+
   <script>
     const messages = document.getElementById("messages");
     const promptInput = document.getElementById("prompt");
@@ -144,6 +155,11 @@
     const status = document.getElementById("status");
     const sessionList = document.getElementById("session-list");
     const messageList = document.getElementById("message-list");
+    const sendVoiceBtn = document.getElementById("sendVoiceBtn");
+    const voiceFile = document.getElementById("voiceFile");
+    const voiceLang = document.getElementById("voiceLang");
+    const voicePlayer = document.getElementById("voicePlayer");
+    const voiceStatus = document.getElementById("voiceStatus");
     let currentSessionId = null;
     let sending = false;
 
@@ -238,155 +254,6 @@
         let buffer = "";
         let newSessionId = null;
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, {stream: true});
-
-          let eventIdx;
-          while ((eventIdx = buffer.indexOf("\n\n")) !== -1) {
-            const rawEvent = buffer.slice(0, eventIdx);
-            buffer = buffer.slice(eventIdx + 2);
-            const eventLines = rawEvent.split("\n");
-            let eventType = null;
-            let eventData = "";
-            for (const line of eventLines) {
-              if (line.startsWith("event: ")) {
-                eventType = line.slice(7).trim();
-              } else if (line.startsWith("data: ")) {
-                eventData += line.slice(6).trim();
-              }
-            }
-            if (!eventType) continue;
-            try {
-              eventData = JSON.parse(eventData);
-            } catch (e) {}
-            if (eventType === "session_id") {
-              newSessionId = eventData.id;
-              messages.textContent += `Session ID: ${eventData.id}\n`;
-            } else if (eventType === "message") {
-              messages.textContent += eventData.text;
-              messages.scrollTop = messages.scrollHeight;
-            } else if (eventType === "complete") {
-              if (eventData.text) messages.textContent += "\n" + eventData.text;
-              if (eventData.sources && eventData.sources.length > 0) {
-                let sourcesText = "\nSources used in this answer:\n";
-                for (const src of eventData.sources) {
-                  sourcesText += `- ${src.Source} (Article: ${src.ArticleNumber})\n`;
-                }
-                messages.textContent += sourcesText;
-              }
-              if (eventData.suggested_questions) {
-                messages.textContent += "\nSuggested questions:\n" + eventData.suggested_questions.join("\n");
-              }
-              status.textContent = "Done ✅";
-              loadSessions();
-              if (newSessionId) {
-                currentSessionId = newSessionId;
-                highlightSession(newSessionId);
-                loadMessages(newSessionId);
-              }
-            } else if (eventType === "error") {
-              status.textContent = "❌ Error: " + (eventData.message || "Unknown error");
-              console.error('SSE error event:', eventData);
-            }
-          }
-        }
-      } catch (err) {
-        status.textContent = "❌ Error receiving response";
-        console.error("Fetch error:", err);
-      }
-      sending = false;
-      sendBtn.disabled = false;
-      promptInput.value = "";
-    });
-
-    promptInput.addEventListener("keyup", (e) => {
-      if (e.key === "Enter") sendBtn.click();
-    });
-  </script>
-</body>
-</html>
-<head>
-  <meta charset="UTF-8">
-  <title>LAWGEN Legal Assistant</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #f4f6fb;
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-    }
-    #chat-container {
-      width: 100%;
-      max-width: 700px;
-      background: #fff;
-      margin-top: 40px;
-      border-radius: 14px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.08);
-      padding: 32px 28px 24px 28px;
-    }
-    h2 {
-      margin-top: 0;
-      font-weight: 600;
-      color: #2a3a5e;
-      letter-spacing: 1px;
-    }
-    .flex-row {
-      display: flex;
-      gap: 24px;
-      margin-bottom: 18px;
-    }
-    .panel {
-      background: #f7f9fc;
-      border-radius: 10px;
-      padding: 12px 10px;
-      flex: 1;
-      min-width: 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
-    }
-
-  </style>
-</head>
-<body>
-  <div id="chat-container">
-    <h2>Chat</h2>
-    <div id="messages"></div>
-    <input id="prompt" type="text" placeholder="Type your message...">
-    <button id="sendBtn">Send</button>
-    <div id="status"></div>
-    <ul id="session-list"></ul>
-    <ul id="message-list"></ul>
-  </div>
-  <!-- Only one script block below -->
-  <script>
-  const response = await fetch("/api/v1/chats/query", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: "frontend",
-            query: prompt,
-            language: "en"
-          })
-        });
-
-        if (!response.body) {
-          status.textContent = "❌ No response body";
-          sending = false;
-          sendBtn.disabled = false;
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let newSessionId = null;
-
         // Parse SSE events from the response stream
         while (true) {
           const { value, done } = await reader.read();
@@ -443,11 +310,56 @@
             }
           }
         }
+      } catch (err) {
+        status.textContent = "❌ Error receiving response";
+        console.error("Fetch error:", err);
+      }
+      sending = false;
+      sendBtn.disabled = false;
+      promptInput.value = "";
+    });
+
+    // Voice chat functionality
+    sendVoiceBtn.onclick = async () => {
+      voiceStatus.textContent = "Sending voice query...";
+      voicePlayer.style.display = "none";
+      if (!voiceFile.files[0]) {
+        voiceStatus.textContent = "Please select an audio file.";
+        return;
+      }
+      const formData = new FormData();
+      formData.append("file", voiceFile.files[0]);
+      formData.append("language", voiceLang.value);
+      // Optionally add sessionId/userId if needed
+      try {
+        const resp = await fetch("/api/v1/chats/voice-query", {
+          method: "POST",
+          body: formData
+        });
+        if (!resp.ok) {
+          let errMsg = "Voice query failed: " + resp.statusText;
+          try {
+            const errJson = await resp.json();
+            if (errJson.error) errMsg += "\n" + errJson.error;
+            if (errJson.details) errMsg += "\nDetails: " + errJson.details;
+          } catch {}
+          voiceStatus.textContent = errMsg;
+          return;
+        }
+        const audioBlob = await resp.blob();
+        voicePlayer.src = URL.createObjectURL(audioBlob);
+        voicePlayer.style.display = "block";
+        voicePlayer.play();
+        voiceStatus.textContent = "Voice response received.";
+      } catch (err) {
+        voiceStatus.textContent = "Error: " + err;
+      }
+    };
 
     // Submit on Enter
     promptInput.addEventListener("keyup", (e) => {
       if (e.key === "Enter") sendBtn.click();
     });
-</script>
+  </script>
 </body>
 </html>
