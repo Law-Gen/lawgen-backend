@@ -6,17 +6,20 @@ import (
 	"io"
 	"time"
 	"user_management/domain"
+	"user_management/infrastructure/auth"
 )
 
 type UserUsecase struct {
 	userRepo      domain.UserRepository
 	imageUploader domain.ImageUploader
+	hasher       *auth.PasswordHasher
 }
 
 func NewUserUsecase(ur domain.UserRepository, iu domain.ImageUploader) domain.UserUsecase {
 	return &UserUsecase{
 		userRepo:      ur,
 		imageUploader: iu,
+		hasher:       &auth.PasswordHasher{},
 	}
 }
 
