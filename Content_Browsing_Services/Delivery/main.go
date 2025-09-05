@@ -8,6 +8,7 @@ import (
 
 	"lawgen/admin-service/Delivery/controllers"
 	"lawgen/admin-service/Delivery/routers"
+	domain "lawgen/admin-service/Domain"
 	infrastructure "lawgen/admin-service/Infrastructure"
 	"lawgen/admin-service/Repositories"
 	usecases "lawgen/admin-service/Usecases"
@@ -48,13 +49,37 @@ func main() {
 
 	// --- Initialize Repositories ---
 	legalEntityRepo := Repositories.NewMongoEntityRepository(db)
+
+	// --- Initialize Content Storage (Azure / AWS) ---
+	var contentStorage domain.IContentStorage
+	provider := os.Getenv("STORAGE_PROVIDER")
+	switch provider {
+	case "azure":
+		contentStorage, err = infrastructure.NewAzureBlobStorage()
+		if err != nil {
+			log.Fatalf("Failed to initialize Azure Blob Storage: %v", err)
+		}
+	case "aws":
+		contentStorage, err = infrastructure.NewAwsS3Storage()
+		if err != nil {
+			log.Fatalf("Failed to initialize AWS S3 Storage: %v", err)
+		}
+	default:
+		log.Println("No STORAGE_PROVIDER specified, defaulting to Azure Blob Storage")
+		contentStorage, err = infrastructure.NewAzureBlobStorage()
+		if err != nil {
+			log.Fatalf("Failed to initialize Azure Blob Storage: %v", err)
+		}
+	}
+
+	// --- Initialize Mongo Repositories ---
 	contentMetadataRepo := Repositories.NewMongoContentRepository(db)
 	analyticsRepo := Repositories.NewMongoAnalyticsRepository(db)
 	feedbackRepo := Repositories.NewMongoFeedbackRepository(db)
 
 	// --- Initialize Usecases ---
 	legalEntityUsecase := usecases.NewLegalEntityUsecase(legalEntityRepo)
-	contentUsecase := usecases.NewContentUsecase(nil, contentMetadataRepo) // storage optional for now
+	contentUsecase := usecases.NewContentUsecase(contentStorage, contentMetadataRepo)
 	analyticsUsecase := usecases.NewAnalyticsUsecase(analyticsRepo)
 	feedbackUsecase := usecases.NewFeedbackUsecase(feedbackRepo)
 
@@ -64,10 +89,10 @@ func main() {
 	analyticsController := controllers.NewAnalyticsController(analyticsUsecase, contentUsecase)
 	feedbackController := controllers.NewFeedbackController(feedbackUsecase)
 
-	// --- JWT Handler (only validate access token from auth service) ---
+	// --- JWT Handler ---
 	accessSecret := os.Getenv("JWT_ACCESS_SECRET")
 	if accessSecret == "" {
-		accessSecret = "your_access_token_secret"
+		accessSecret = "your_access_token_secret" // fallback for local dev
 	}
 	jwtHandler := &infrastructure.JWT{
 		AccessSecret: accessSecret,
