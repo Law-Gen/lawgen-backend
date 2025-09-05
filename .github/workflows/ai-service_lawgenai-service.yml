@@ -34,7 +34,7 @@ jobs:
           context: ./Ai-services
           push: true
           tags: mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}
-          file: ./Dockerfile
+          file: ./Ai-services/Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
@@ -63,4 +63,5 @@ jobs:
           images: 'mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}'
 
           
+
 
