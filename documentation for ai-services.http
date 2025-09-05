@@ -28,7 +28,7 @@ POST {{api_url}}/ask
 Content-Type: application/json
 
 {
-  "query": "What are the powers of the Prime Minister?",
+  "query": "የኢትዮጵያ ፌዴራላዊ ዲሞክራሲያዊ ሪፐብሊክ ሕገ መንግሥት የሀገሪቱ የበላይ ሕግ ነው፡፡ ከዚህ ሕገ መንግሥት ጋር የሚቃረን ማንኛውም ሕግ፣ ልማዳዊ አሠራር ወይም የመንግሥት አካል አፈጻጸም ተፈጻሚነት አይኖረውም",
   "k": 3
 }
 
