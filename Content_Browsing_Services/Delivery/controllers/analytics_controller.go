@@ -5,6 +5,7 @@ import (
 
 	"net/http"
 	"strconv"
+
 	"time"
 
 	domain "lawgen/admin-service/Domain"
@@ -57,7 +58,7 @@ func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
 }
 
 
-// === New: Enterprise Query Trends ===
+// Enterprise Query Trends
 func (c *AnalyticsController) GetQueryTrends(ctx *gin.Context) {
 	startDate := ctx.Query("start_date")
 	endDate := ctx.Query("end_date")
@@ -70,16 +71,16 @@ func (c *AnalyticsController) GetQueryTrends(ctx *gin.Context) {
 	}
 
 	// AuthZ check (role must be enterprise)
-	role, exists := ctx.Get("role")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "User not logged in"})
-		return
-	}
+	// role, exists := ctx.Get("role")
+	// if !exists {
+	// 	ctx.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "User not logged in"})
+	// 	return
+	// }
 
-	if role != "enterprise" {
-		ctx.JSON(http.StatusForbidden, gin.H{"code": "ACCESS_DENIED", "message": "Not an enterprise user"})
-		return
-	}
+	// if role != "enterprise" {
+	// 	ctx.JSON(http.StatusForbidden, gin.H{"code": "ACCESS_DENIED", "message": "Not an enterprise user"})
+	// 	return
+	// }
 
 	result, err := c.analyticsUsecase.GetQueryTrends(ctx.Request.Context(), startDate, endDate, limit)
 	if err != nil {

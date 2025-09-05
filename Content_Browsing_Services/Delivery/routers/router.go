@@ -2,21 +2,27 @@ package routers
 
 import (
 	"lawgen/admin-service/Delivery/controllers"
+	infrastructure "lawgen/admin-service/Infrastructure"
+	"lawgen/admin-service/Infrastructure/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
+// NewRouter sets up the Gin router with all routes and middleware
 func NewRouter(
 	legalEntityController *controllers.LegalEntityController,
 	contentController *controllers.ContentController,
 	analyticsController *controllers.AnalyticsController,
-	FeedbackController *controllers.FeedbackController,
+	feedbackController *controllers.FeedbackController,
+	jwtHandler *infrastructure.JWT,
 ) *gin.Engine {
+
 	router := gin.Default()
 
-	// --- Public API ---
+	// --- PUBLIC API (no authentication required) ---
 	apiV1 := router.Group("/api/v1")
 	{
+		// Legal Entity routes (publicly accessible)
 		legalEntityAPI := apiV1.Group("/legal-entities")
 		{
 			legalEntityAPI.POST("", legalEntityController.CreateLegalEntity)
@@ -26,36 +32,45 @@ func NewRouter(
 			legalEntityAPI.DELETE("/:id", legalEntityController.DeleteLegalEntity)
 		}
 
+		// Feedback routes (publicly accessible)
 		feedbackAPI := apiV1.Group("/feedback")
 		{
-			feedbackAPI.POST("", FeedbackController.CreateFeedback)
-			feedbackAPI.GET("/:id", FeedbackController.GetFeedbackByID)
-			feedbackAPI.GET("", FeedbackController.ListFeedbacks)
+			feedbackAPI.POST("", feedbackController.CreateFeedback)
+			feedbackAPI.GET("/:id", feedbackController.GetFeedbackByID)
+			feedbackAPI.GET("", feedbackController.ListFeedbacks)
 		}
 
+		// Content routes (some require authentication for analytics)
 		contentsAPI := apiV1.Group("/contents")
 		{
 			contentsAPI.GET("", contentController.GetAllContent)
-			contentsAPI.GET("/:id/view", analyticsController.ViewContentAndRedirect)
+			contentsAPI.GET("/:id/view", middleware.AuthMiddleware(jwtHandler), analyticsController.ViewContentAndRedirect)
 			contentsAPI.GET("/group/:groupID", contentController.GetContentsByGroupID)
 		}
 
-	
+		// Enterprise analytics (requires enterprise plan)
 		enterpriseAPI := apiV1.Group("/enterprise/analytics")
 		{
-				enterpriseAPI.GET("/query-trends", analyticsController.GetQueryTrends)
+			enterpriseAPI.Use(middleware.AuthMiddleware(jwtHandler))     // must be logged in
+			enterpriseAPI.Use(middleware.EnterprisePlanMiddleware())   // must have enterprise plan
+			enterpriseAPI.GET("/query-trends", analyticsController.GetQueryTrends)
 		}
-
 	}
 
-
+	// --- ADMIN API (requires admin role) ---
 	adminV1 := router.Group("/api/v1/admin")
 	{
+		adminV1.Use(middleware.AuthMiddleware(jwtHandler))   // must be logged in
+		adminV1.Use(middleware.RoleMiddleware("admin"))      // must have admin role
+
+		// Admin content management
 		adminContentAPI := adminV1.Group("/contents")
 		{
 			adminContentAPI.POST("", contentController.CreateContent)
 			adminContentAPI.DELETE("/:id", contentController.DeleteContent)
 		}
+
+		// You can add more admin-only routes here
 	}
 
 	return router
