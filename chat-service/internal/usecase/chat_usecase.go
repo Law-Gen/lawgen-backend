@@ -227,13 +227,12 @@ func (s *ChatService) processQueryInternal(ctx context.Context, req QueryRequest
 	finalLLMPrompt = strings.ReplaceAll(finalLLMPrompt, "{{.MaxRefs}}", fmt.Sprintf("%d", userParams.MaxReferences))
 	log.Printf("\n### LLM Service\nPrompt: %s\n", finalLLMPrompt)
 
-	// Stream LLM response word-by-word with minimal latency
+	// Stream LLM response word-by-word with minimal latency, translating each chunk if needed
 	llmStream, err := s.llmService.StreamGenerate(ctx, finalLLMPrompt, chatHistory, userParams.MaxAnswerWords)
 	if err != nil {
 		resChan <- ChatResponseChunk{Error: fmt.Errorf("failed to stream LLM response: %w", err)}
 		return
 	}
-
 	for chunk := range llmStream {
 		if chunk.Error != nil {
 			resChan <- ChatResponseChunk{Error: fmt.Errorf("LLM stream error: %w", chunk.Error)}
@@ -242,10 +241,18 @@ func (s *ChatService) processQueryInternal(ctx context.Context, req QueryRequest
 		if chunk.Done {
 			break
 		}
-		// Stream each word with small latency
-		for _, word := range strings.Fields(chunk.Chunk) {
+		words := strings.Fields(chunk.Chunk)
+		for _, word := range words {
+			outText := word + " "
+			// If user requested non-English, translate each chunk
+			if req.Language != "en" {
+				translated, err := s.llmService.Translate(ctx, outText, req.Language)
+				if err == nil && translated != "" {
+					outText = translated + " "
+				}
+			}
 			time.Sleep(30 * time.Millisecond)
-			resChan <- ChatResponseChunk{Text: word + " "}
+			resChan <- ChatResponseChunk{Text: outText}
 		}
 		llmAnswerBuilder.WriteString(chunk.Chunk)
 		log.Printf("\n### LLM Stream Chunk\nChunk: %s\n", chunk.Chunk)

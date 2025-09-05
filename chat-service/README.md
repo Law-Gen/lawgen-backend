@@ -1,6 +1,8 @@
+go run .
+
 # Chat Service
 
-This service provides RESTful APIs for managing quizzes and categories, designed for integration with other backend services.
+This service provides RESTful APIs for quizzes, chat, and voice chat, designed for integration with LawGen frontend apps and other backend services.
 
 ## Features
 - Quiz and category CRUD operations
@@ -8,6 +10,7 @@ This service provides RESTful APIs for managing quizzes and categories, designed
 - Submit quiz answers and get scores
 - Pagination for categories and quizzes
 - Chat with legal assistant (SSE streaming, session history, sources)
+- **Voice chat with legal assistant (audio in, audio out, Amharic/English supported)**
 
 ## Installation
 1. **Clone the repository:**
@@ -31,44 +34,23 @@ The service will start on the port specified in your `.env` file.
 ## Testing
 - For quizzes: Import `quiz_api_collection.json` into Postman for ready-to-use API tests.
 - For chat: Open `index.html` in your browser at `http://localhost:8080/` after running the service. This provides a production-ready chat UI that interacts with the backend via SSE and REST endpoints.
-  - You can send messages, view session history, and see sources used in answers.
+- For **voice chat**: Use the "Voice Chat" panel in `index.html` or send a `multipart/form-data` POST to `/api/v1/chats/voice-query` (see below).
+
+---
 
 ## API Endpoints
-### Categories
-- `GET /categories`: List categories (pagination: `page`, `limit`)
-- `POST /categories`: Create category `{ name }`
-- `PUT /categories/:categoryId`: Update category `{ name }`
-- `DELETE /categories/:categoryId`: Delete category
 
-### Quizzes
-- `GET /categories/:categoryId/quizzes`: List quizzes by category (pagination)
-- `POST /quizzes`: Create quiz `{ category_id, name, description }`
-- `PUT /quizzes/:quizId`: Update quiz `{ name, description }`
-- `DELETE /quizzes/:quizId`: Delete quiz
-- `GET /quizzes/:quizId`: Get quiz details
+### Categories, Quizzes, Questions, Quiz Submission
+*(See previous sections for details.)*
 
-### Questions
-- `GET /quizzes/:quizId/questions`: List questions for a quiz
-- `POST /quizzes/:quizId/questions`: Add question `{ text, options, correct_option }`
-- `PUT /quizzes/:quizId/questions/:questionId`: Update question `{ text, options, correct_option }`
-- `DELETE /quizzes/:quizId/questions/:questionId`: Delete question
+---
 
-### Quiz Submission
-- `POST /quizzes/:quizId/submit`: Submit answers `{ "questionId": "selectedOption", ... }`
-  - Returns: `{ score, total_question }`
-
-### Chat Service
+### Chat Service (Text)
 - `POST /api/v1/chats/query`: Send a chat message and receive streamed response (SSE)
   - Request: `{ "sessionId": "<optional>", "query": "<message>", "language": "<optional>" }`
   - Response: SSE stream of `{ text, sources, is_complete, suggested_questions }`
-- `POST /api/chats`: Create a new chat session
-  - Request: `{ "user_id": "<userId>", "topic": "<topic>" }`
-  - Response: `{ session_id }`
 - `GET /api/v1/chats/sessions`: List chat sessions for authenticated user
-  - Query params: `page`, `limit`
-  - Response: `{ sessions: [...], total, page, limit }`
 - `GET /api/v1/chats/sessions/:sessionId/messages`: Get messages for a session
-  - Response: `{ messages: [...] }`
 
 #### Usage Example (Chat Query)
 ```bash
@@ -77,10 +59,46 @@ curl -X POST http://localhost:8080/api/v1/chats/query \
   -d '{"sessionId": "<optional>", "query": "What is contract law?", "language": "en"}'
 ```
 
-#### SSE Streaming
-- The `/api/v1/chats/query` endpoint streams responses word-by-word using Server-Sent Events (SSE).
-- Parse each SSE event for `{ text }` and display incrementally.
-- Final event includes `is_complete: true` and `sources` used in the answer.
+---
+
+### Voice Chat Service
+
+- `POST /api/v1/chats/voice-query`
+  - **Request:** `multipart/form-data` with fields:
+    - `file`: audio file (WAV/MP3, Amharic or English speech)
+    - `language`: `"en"` or `"am"`
+    - (optional) `sessionId`, `userId`, `planId`
+  - **Response:** `audio/mpeg` (MP3 audio, same language as request)
+  - **No JSON is returned.** The response is a raw audio file.
+
+#### Example (using curl)
+```bash
+curl -X POST http://localhost:8080/api/v1/chats/voice-query \
+  -F "file=@sample.wav" \
+  -F "language=am" \
+  --output response.mp3
+```
+
+#### Frontend Integration
+- Use `fetch` with `FormData` and expect a raw audio response.
+- Example:
+  ```js
+  const resp = await fetch('/api/v1/chats/voice-query', { method: 'POST', body: formData });
+  const audioBlob = await resp.blob();
+  voicePlayer.src = URL.createObjectURL(audioBlob);
+  voicePlayer.play();
+  ```
+- **Do not parse the response as JSON.** The backend returns only audio.
+
+#### Supported Languages
+- `"en"`: English
+- `"am"`: Amharic
+
+#### Error Handling
+- On error, the backend returns a JSON error object with an appropriate HTTP status code.
+- On success, the response is always `audio/mpeg`.
+
+---
 
 ## License
 MIT

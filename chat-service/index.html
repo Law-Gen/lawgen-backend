@@ -330,7 +330,6 @@
       const formData = new FormData();
       formData.append("file", voiceFile.files[0]);
       formData.append("language", voiceLang.value);
-      // Optionally add sessionId/userId if needed
       try {
         const resp = await fetch("/api/v1/chats/voice-query", {
           method: "POST",
@@ -339,18 +338,23 @@
         if (!resp.ok) {
           let errMsg = "Voice query failed: " + resp.statusText;
           try {
-            const errJson = await resp.json();
-            if (errJson.error) errMsg += "\n" + errJson.error;
-            if (errJson.details) errMsg += "\nDetails: " + errJson.details;
+            const errText = await resp.text();
+            errMsg += "\n" + errText;
           } catch {}
           voiceStatus.textContent = errMsg;
           return;
         }
+        // Expect raw audio/mpeg, not JSON
         const audioBlob = await resp.blob();
-        voicePlayer.src = URL.createObjectURL(audioBlob);
-        voicePlayer.style.display = "block";
-        voicePlayer.play();
-        voiceStatus.textContent = "Voice response received.";
+        if (audioBlob.type.startsWith('audio/')) {
+          voicePlayer.src = URL.createObjectURL(audioBlob);
+          voicePlayer.style.display = "block";
+          voicePlayer.play();
+          voiceStatus.textContent = "Voice response received.";
+        } else {
+          voiceStatus.textContent = "No audio received.";
+          voicePlayer.style.display = "none";
+        }
       } catch (err) {
         voiceStatus.textContent = "Error: " + err;
       }

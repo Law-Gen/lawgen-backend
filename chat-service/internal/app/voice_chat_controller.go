@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const sttAPIURL = "http://127.0.0.1:8000/speech-to-text/en"
+const sttAPIBase = "http://127.0.0.1:8000/speech-to-text/"
 const translateAPIURL = "http://127.0.0.1:8000/translate"
 const ttsAPIURL = "http://127.0.0.1:8000/text-to-speech"
 
@@ -43,13 +43,14 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 			return
 		}
 
-		// 2. Send audio to STT API
+		// 2. Send audio to STT API (use correct language endpoint)
+		lang := ctx.DefaultPostForm("language", "en")
+		sttAPIURL := fmt.Sprintf("http://127.0.0.1:8000/speech-to-text/%s?mode=file", lang)
 		var sttBuf bytes.Buffer
 		writer := multipart.NewWriter(&sttBuf)
-		// Set Content-Type for the file part explicitly
 		fileContentType := header.Header.Get("Content-Type")
 		if fileContentType == "" {
-			fileContentType = "audio/mpeg" // fallback, browser may send empty
+			fileContentType = "audio/mpeg"
 		}
 		h := make(textproto.MIMEHeader)
 		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, header.Filename))
@@ -83,14 +84,12 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 			Text string `json:"text"`
 		}
 		json.NewDecoder(sttResp.Body).Decode(&sttResult)
-
 		if sttResult.Text == "" {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "No text transcribed"})
 			return
 		}
 
 		// 3. If language is not English, translate to English
-		lang := ctx.DefaultPostForm("language", "en")
 		queryText := sttResult.Text
 		if lang != "en" {
 			transReqBody, _ := json.Marshal(map[string]string{
