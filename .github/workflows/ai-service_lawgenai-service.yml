@@ -31,7 +31,7 @@ jobs:
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: ./AI-services
           push: true
           tags: mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}
           file: ./Dockerfile
@@ -61,4 +61,5 @@ jobs:
           app-name: 'LawGenAI-Service'
           slot-name: 'Production'
           images: 'mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}'
+
           
