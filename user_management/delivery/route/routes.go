@@ -81,11 +81,13 @@ func HealthRouter(r *gin.Engine) {
 func NewRouter() *gin.Engine {
 	r := gin.Default()
     config := cors.Config{
-        AllowOrigins:     []string{"*"},
+        AllowOrigins: []string{
+            "http://localhost:3000",
+        },
         AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
         ExposeHeaders:    []string{"Content-Length"},
-        // AllowCredentials: true,
+        AllowCredentials: true,
         MaxAge:           12 * time.Hour,
     }
     r.Use(cors.New(config))
