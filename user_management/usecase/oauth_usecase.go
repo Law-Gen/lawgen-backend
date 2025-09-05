@@ -83,10 +83,11 @@ func (uc *OAuthUsecase) OAuthLogin(
 
 	// --- User Lookup or Creation ---
 	existingUser, _ := uc.userRepo.FindByEmail(ctx, googleUserInfo.Email)
-
+	
 	if existingUser != nil {
+		age := int(time.Since(existingUser.Profile.BirthDate).Hours() / 24 / 365)
 		// User exists, generate tokens for them
-		accessToken, err := uc.jwtService.GenerateAccessToken(existingUser.ID, existingUser.Role)
+		accessToken, err := uc.jwtService.GenerateAccessToken(existingUser.ID, existingUser.Role, existingUser.SubscriptionStatus, existingUser.Profile.Gender, age)
 		if err != nil {
 			return "", "", 0, nil, fmt.Errorf("failed to generate access token: %w", err)
 		}
@@ -134,7 +135,8 @@ func (uc *OAuthUsecase) OAuthLogin(
 
 		// --- Generate Application-Specific Tokens ---
 		// Generate access token
-		accessToken, err := uc.jwtService.GenerateAccessToken(user.ID, user.Role)
+		age := int(time.Since(user.Profile.BirthDate).Hours() / 24 / 365)
+		accessToken, err := uc.jwtService.GenerateAccessToken(user.ID, user.Role, user.SubscriptionStatus, user.Profile.Gender, age)
 		if err != nil {
 			return "", "", 0, nil, errors.New("failed to generate access token")
 		}

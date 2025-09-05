@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"user_management/infrastructure/auth"
+	"fmt"
 	"strings"
+	"user_management/infrastructure/auth"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,8 +26,63 @@ func AuthMiddleware(jwtHandler *auth.JWT) gin.HandlerFunc {
 		// Set claims in context
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Set("plan", claims.Plan)
+		c.Set("age", claims.Age)
+		c.Set("gender", claims.Gender)
+
+		fmt.Println("Authenticated user:", claims.UserID, "Role:", claims.Role, "Plan:", claims.Plan, "Age:", claims.Age, "Gender:", claims.Gender)
 
 		c.Next()
 	}
 }
 
+func RoleMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.AbortWithStatusJSON(403, gin.H{"error": "role not found"})
+			return
+		}
+
+		if role != "admin" {
+			c.AbortWithStatusJSON(403, gin.H{"error": "forbidden: insufficient permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func ProPlanMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		plan, exists := c.Get("plan")
+		if !exists {
+			c.AbortWithStatusJSON(403, gin.H{"error": "plan not found"})
+			return
+		}
+
+		if plan != "pro" {
+			c.AbortWithStatusJSON(403, gin.H{"error": "forbidden: insufficient permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func EnterprisePlanMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		plan, exists := c.Get("plan")
+		if !exists {
+			c.AbortWithStatusJSON(403, gin.H{"error": "plan not found"})
+			return
+		}
+
+		if plan != "enterprise" {
+			c.AbortWithStatusJSON(403, gin.H{"error": "forbidden: insufficient permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}

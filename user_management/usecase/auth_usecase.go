@@ -105,7 +105,9 @@ func (uc *AuthUsecase) Login(ctx context.Context, email, password string) (strin
 		return "", "", 0, nil, errors.New("invalid credentials")
 	}
 
-	accessToken, err := uc.jwt.GenerateAccessToken(user.ID, user.Role)
+	age := int(time.Since(user.Profile.BirthDate).Hours() / 24 / 365)
+
+	accessToken, err := uc.jwt.GenerateAccessToken(user.ID, user.Role, user.SubscriptionStatus, user.Profile.Gender, age)
 	if err != nil {
 		return "", "", 0, nil, errors.New("failed to generate token")
 	}
@@ -311,7 +313,9 @@ func (uc *AuthUsecase) RefreshTokens(ctx context.Context, refreshToken string) (
 		return "", "", 0, errors.New("user not found")
 	}
 
-	accessTokenNew, err := uc.jwt.GenerateAccessToken(user.ID, user.Role)
+	age := int(time.Since(user.Profile.BirthDate).Hours() / 24 / 365)
+
+	accessTokenNew, err := uc.jwt.GenerateAccessToken(user.ID, user.Role, user.SubscriptionStatus, user.Profile.Gender, age)
 	if err != nil {
 		return "", "", 0, errors.New("failed to generate access token")
 	}
