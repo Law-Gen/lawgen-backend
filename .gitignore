@@ -6,3 +6,5 @@ Ai-services/tests/
 AI-services/test_client.py
 AI-services/app/__pycache__/
 ts.py
+ts3.py
+ts2.py
