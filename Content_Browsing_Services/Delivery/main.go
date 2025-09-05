@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -13,16 +14,24 @@ import (
 	"lawgen/admin-service/Repositories"
 	usecases "lawgen/admin-service/Usecases"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // mongoConnect establishes and verifies a MongoDB connection.
 func mongoConnect(ctx context.Context) (*mongo.Database, error) {
-	mongoURI := os.Getenv("MONGO_URI")
+	err := godotenv.Load("../.env")
+
+  if err != nil {
+    log.Println("No .env file found, using system env variables")
+  }
+
+	mongoURI := os.Getenv("MONGODB_URI")
 	if mongoURI == "" {
 		mongoURI = "mongodb://localhost:27017"
 	}
+	fmt.Println(mongoURI)
 	dbName := "lawgen_admin_db"
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
