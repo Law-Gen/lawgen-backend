@@ -83,3 +83,21 @@ func (upd *UserUsecase) GetAllUsers(ctx context.Context, page int, limit int) ([
 func (upd *UserUsecase) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
 	return upd.userRepo.FindByID(ctx, id)
 }
+
+func (upd *UserUsecase) ChangePassword(ctx context.Context, user_id string, oldPassword string, newPassword string) error {
+	user, err := upd.userRepo.FindByID(ctx, user_id)
+	if err != nil {
+		return err
+	}
+
+	if !upd.hasher.CompareHashAndPassword(user.Password, oldPassword) {
+		return errors.New("invalid credentials")
+	}
+
+	hashedPassword, err := upd.hasher.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return upd.userRepo.UpdateUserPassword(ctx, user.Email, hashedPassword)
+}

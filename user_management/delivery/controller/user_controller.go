@@ -31,6 +31,11 @@ type AllusersResponse struct {
 	PaginationData PaginationDTO
 }
 
+type ChangePasswordReq struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
+}
+
 func ConvertDTOSlicetoDomian(users []domain.User) []UserDTO {
 	domainUsers := make([]UserDTO, len(users))
 	for i, user := range users {
@@ -179,4 +184,32 @@ func (uc *UserController) HandleGetUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": ConvertToUserDTO(user)})
+}
+
+func (uc *UserController) HandleChangePassword(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userID, ok := userIDVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	var req ChangePasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := uc.userUsecase.ChangePassword(ctx, userID, req.OldPassword, req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
 }

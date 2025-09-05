@@ -16,6 +16,7 @@ type UserUsecase interface {
 	ProfileUpdate(ctx context.Context, userid string, gender string, birthDate time.Time, languagePreference string, file io.Reader) error
 	GetAllUsers(ctx context.Context, page int, limit int) ([]User, int64, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
+	ChangePassword(ctx context.Context, user_id string, oldPassword string, newPassword string) error
 }
 
 type AuthUsecase interface {
