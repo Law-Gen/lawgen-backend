@@ -13,55 +13,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
-
+      contents: read 
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
+        
       - name: Log in to container registry
         uses: docker/login-action@v2
         with:
           registry: mcr.microsoft.com/
           username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}
           password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_B9AA2B2B990748E8951ABA17BAC4E366 }}
-
+          
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
         with:
           context: ./Ai-services
           push: true
-          tags: mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}
+          tags: mcr.microsoft.com/ellay21/appsvc/staticsite:${{ github.sha }} 
           file: ./Ai-services/Dockerfile
-
+          
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
+      id-token: write 
+      contents: read 
     needs: build
     
-
     steps:
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5BA53A8F17574E518FB582650FA4BD2F }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8446B8EC26AD4A11A982D5DFE37A5B73 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E17C30F2AB274E059186BE3EFDD14BB8 }}
-
+          
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'LawGenAI-Service'
           slot-name: 'Production'
-          images: 'mcr.microsoft.com/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_2344DCB56A8B48BBBE2FAF1BB0FBCD3A }}/appsvc/staticsite:${{ github.sha }}'
-
-          
-
-
+          images: 'mcr.microsoft.com/ellay21/appsvc/staticsite:${{ github.sha }}'
