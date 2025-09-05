@@ -51,9 +51,11 @@ func UserRouter(r *gin.Engine, userController *controller.UserController, jwt *a
             userGroup.GET("/users/me", tollbooth_gin.LimitHandler(contentReadLimiter), userController.HandleGetUserByID)
             userGroup.PUT("/users/me/change-password", tollbooth_gin.LimitHandler(contentCreationLimiter), userController.HandleChangePassword)
             // Admin routes
-            userGroup.POST("/promote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandlePromote)
-            userGroup.POST("/demote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDemote)
+            userGroup.POST("/admin/promote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandlePromote)
+            userGroup.POST("/admin/demote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDemote)
 			userGroup.GET("/admin/users", tollbooth_gin.LimitHandler(contentReadLimiter), middleware.RoleMiddleware(), userController.HandleGetAllUsers)
+            userGroup.POST("/admin/deactivate", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDeactivateUser)
+            userGroup.POST("/admin/activate", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleActivateUser)
 		}
 	}
 }

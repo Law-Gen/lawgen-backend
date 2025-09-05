@@ -186,6 +186,23 @@ func (mr *UserRepository) UpdateActiveStatus(ctx context.Context, email string) 
 	}
 }
 
+func (mr *UserRepository) DeactivateUser(ctx context.Context, email string) error {
+	filter := bson.M{"email": email}
+	update := bson.M{
+		"$set": bson.M{
+			"activated": false,
+		},
+	}
+	if res, err := mr.collection.UpdateOne(ctx, filter, update); err != nil {
+		return err
+	} else {
+		if res.MatchedCount == 0 {
+			return errors.New("user not found")
+		}
+		return nil
+	}
+}
+
 func (mr *UserRepository) UpdateUserPassword(ctx context.Context, email string, newPasswordHash string) error {
 	filter := bson.M{"email": email}
 	update := bson.M{

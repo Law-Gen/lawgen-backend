@@ -43,7 +43,43 @@ func (upd *UserUsecase) Promote(ctx context.Context, userid, Email string) error
 	}
 
 	return upd.userRepo.UpdateUserRole(ctx, string(domain.RoleAdmin), Email)
+
 }
+	
+func (upd *UserUsecase) ActivateUser(ctx context.Context, userid, Email string) error {
+	targetUser, err := upd.userRepo.FindByEmail(ctx, Email)
+	if err != nil {
+		return err
+	}
+
+	if targetUser.ID == userid {
+		return errors.New("cannot activate own account")
+	}
+
+	if targetUser.Activated {
+		return errors.New("user is already activated")
+	}
+
+	return upd.userRepo.UpdateActiveStatus(ctx, Email)
+}
+
+func (upd *UserUsecase) DeactivateUser(ctx context.Context, userid, Email string) error {
+	targetUser, err := upd.userRepo.FindByEmail(ctx, Email)
+	if err != nil {
+		return err
+	}
+
+	if targetUser.ID == userid {
+		return errors.New("cannot deactivate own account")
+	}
+
+	if !targetUser.Activated {
+		return errors.New("user is already deactivated")
+	}
+
+	return upd.userRepo.DeactivateUser(ctx, Email)
+}
+
 
 func (upd *UserUsecase) Demote(ctx context.Context, userid, Email string) error {
 	targetUser, err := upd.userRepo.FindByEmail(ctx, Email)

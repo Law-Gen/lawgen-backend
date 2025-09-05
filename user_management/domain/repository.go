@@ -15,6 +15,7 @@ type UserRepository interface {
 	UpdateUserPassword(ctx context.Context, email string, newPasswordHash string) error
 	GetAllUsers(ctx context.Context, page int, limit int) ([]User, int64, error)
 	UpdateUserSubscriptionStatus(ctx context.Context, userID string, newStatus string) error
+	DeactivateUser(ctx context.Context, email string) error
 }
 
 type UnactiveUserRepo interface {

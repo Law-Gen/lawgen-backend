@@ -17,6 +17,8 @@ type UserUsecase interface {
 	GetAllUsers(ctx context.Context, page int, limit int) ([]User, int64, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	ChangePassword(ctx context.Context, user_id string, oldPassword string, newPassword string) error
+	DeactivateUser(ctx context.Context, userid, Email string) error
+	ActivateUser(ctx context.Context, userid, Email string) error
 }
 
 type AuthUsecase interface {
