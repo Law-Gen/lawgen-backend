@@ -26,7 +26,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./Ai-service  
-        file: ./Ai-service/Dockerfile
+        context: ./Ai-services  
+        file: ./Ai-services/Dockerfile
         push: true
         tags: lawgenacr.azurecr.io/appsvc/staticsite:latest
