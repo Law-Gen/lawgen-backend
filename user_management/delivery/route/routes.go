@@ -48,6 +48,7 @@ func UserRouter(r *gin.Engine, userController *controller.UserController, jwt *a
         userGroup.Use(middleware.AuthMiddleware(jwt)) // Apply auth middleware
         {
             userGroup.PUT("/users/me", tollbooth_gin.LimitHandler(contentCreationLimiter), userController.HandleUpdateUser)
+            userGroup.GET("/users/me", tollbooth_gin.LimitHandler(contentReadLimiter), userController.HandleGetUserByID)
             userGroup.POST("/promote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandlePromote)
             userGroup.POST("/demote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDemote)
 			userGroup.GET("/admin/users", tollbooth_gin.LimitHandler(contentReadLimiter), userController.HandleGetAllUsers)

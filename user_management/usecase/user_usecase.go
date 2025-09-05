@@ -76,3 +76,7 @@ func (upd *UserUsecase) ProfileUpdate(ctx context.Context, userid string, gender
 func (upd *UserUsecase) GetAllUsers(ctx context.Context, page int, limit int) ([]domain.User, int64, error) {
 	return upd.userRepo.GetAllUsers(ctx, page, limit)
 }
+
+func (upd *UserUsecase) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
+	return upd.userRepo.FindByID(ctx, id)
+}

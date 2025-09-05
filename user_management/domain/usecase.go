@@ -15,6 +15,7 @@ type UserUsecase interface {
 	Demote(ctx context.Context, userId, email string) error
 	ProfileUpdate(ctx context.Context, userid string, gender string, birthDate time.Time, languagePreference string, file io.Reader) error
 	GetAllUsers(ctx context.Context, page int, limit int) ([]User, int64, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
 }
 
 type AuthUsecase interface {
