@@ -1,18 +1,17 @@
-name: Deploy User Management to ACA
+name: Deploy User service to ACA
 
 on:
   push:
     branches:
-      - user-service
+      - user-service 
 
-# Define environment variables for the workflow
 env:
   AZURE_CONTAINER_REGISTRY: 'lawgenacr.azurecr.io'
-  AZURE_RESOURCE_GROUP: 'Zekua' 
-  AZURE_CONTAINER_APPS_ENVIRONMENT: 'lawgen' 
+  AZURE_RESOURCE_GROUP: 'Zekua'  
+  AZURE_CONTAINER_APPS_ENVIRONMENT: 'lawgen'  
   MICROSERVICE_NAME: 'user-service'
-  DOCKERFILE_PATH: './user-service/Dockerfile'
-  DOCKER_CONTEXT_PATH: './user-service'
+  DOCKERFILE_PATH: './user_management/Dockerfile'
+  DOCKER_CONTEXT_PATH: './user_management'
   TARGET_PORT: '8080'
 
 jobs:
@@ -53,10 +52,10 @@ jobs:
         resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
         containerAppName: ${{ env.MICROSERVICE_NAME }}
         environment: ${{ env.AZURE_CONTAINER_APPS_ENVIRONMENT }}
-        acrName: 'lawgenacr' # fixed to registry name only
+        acrName: 'lawgenacr'
         imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.MICROSERVICE_NAME }}:${{ github.sha }}
         targetPort: ${{ env.TARGET_PORT }}
-        ingress: 'external' # set to 'internal' if you want private-only
+        ingress: 'external' 
         envVars: |
           PORT=${{ env.TARGET_PORT }}
           ENV=${{ secrets.ENV }}
@@ -68,7 +67,7 @@ jobs:
           ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}"
           REFRESH_TOKEN_EXPIRY="${{ secrets.REFRESH_TOKEN_EXPIRY }}"
           API_KEY="${{ secrets.API_KEY }}"
-          API_SECRET="${{ secrets.API_SECRET }}" # fixed typo
+          API_SECRET="${{ secrets.API_SECRET }}"
           CLOUD_NAME="${{ secrets.CLOUD_NAME }}"
           SMTP_HOST="${{ secrets.SMTP_HOST }}"
           SMTP_PORT="${{ secrets.SMTP_PORT }}"
@@ -79,4 +78,4 @@ jobs:
           GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
           GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
           OAUTH_STATE_STRING="${{ secrets.OAUTH_STATE_STRING }}"
-          APP_URL="${{ secrets.URL }}" # renamed for clarity
+          APP_URL="${{ secrets.URL }}"
