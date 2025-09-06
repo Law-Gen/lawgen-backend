@@ -13,6 +13,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -79,8 +80,12 @@ func main() {
 	}
 
 	// Initialize Redis
+	u, _ := url.Parse(cfg.RedisAddr)
+	password, _ := u.User.Password()
 	rdb := redis.NewClient(&redis.Options{
-		Addr: cfg.RedisAddr,
+		Addr:     u.Host,
+		Password: password,
+		DB:       0,
 	})
 	defer func() {
 		if err := rdb.Close(); err != nil {
