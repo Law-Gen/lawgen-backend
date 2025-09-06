@@ -46,34 +46,65 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # 6. Deploy to Azure Container App with external ingress
+    # 6. Deploy to Azure Container App (create if not exists, otherwise update)
     - name: Deploy to Azure Container App
       run: |
-        az containerapp update \
-          --name user-service \
-          --resource-group Zekua \
-          --image lawgenacr.azurecr.io/appsvc/staticsite:${{ github.sha }} \
-          --ingress external \
-          --target-port ${{ env.TARGET_PORT }} \
-          --environment-variables \
-            PORT=${{ env.TARGET_PORT }} \
-            ENV=${{ secrets.ENV }} \
-            MONGODB_URI=${{ secrets.MONGODB_URI }} \
-            MONGODB_DB=${{ secrets.MONGODB_DB }} \
-            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
-            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
-            ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
-            REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
-            API_KEY=${{ secrets.API_KEY }} \
-            API_SECRET=${{ secrets.API_SECRET }} \
-            CLOUD_NAME=${{ secrets.CLOUD_NAME }} \
-            SMTP_HOST=${{ secrets.SMTP_HOST }} \
-            SMTP_PORT=${{ secrets.SMTP_PORT }} \
-            SMTP_USER=${{ secrets.SMTP_USER }} \
-            SMTP_PASS=${{ secrets.SMTP_PASS }} \
-            FROM_EMAIL=${{ secrets.FROM_EMAIL }} \
-            GEMINI_AI_API_KEY=${{ secrets.GEMINI_AI_API_KEY }} \
-            GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
-            GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
-            OAUTH_STATE_STRING=${{ secrets.OAUTH_STATE_STRING }} \
-            APP_URL=${{ secrets.URL }}
+        # Check if the container app exists
+        if ! az containerapp show --name user-service --resource-group Zekua > /dev/null 2>&1; then
+          echo "Container app does not exist, creating..."
+          az containerapp create \
+            --name user-service \
+            --resource-group Zekua \
+            --image lawgenacr.azurecr.io/appsvc/staticsite:${{ github.sha }} \
+            --ingress external \
+            --target-port ${{ env.TARGET_PORT }} \
+            --environment-variables \
+              PORT=${{ env.TARGET_PORT }} \
+              ENV=${{ secrets.ENV }} \
+              MONGODB_URI=${{ secrets.MONGODB_URI }} \
+              MONGODB_DB=${{ secrets.MONGODB_DB }} \
+              ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
+              REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
+              ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
+              REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
+              API_KEY=${{ secrets.API_KEY }} \
+              API_SECRET=${{ secrets.API_SECRET }} \
+              CLOUD_NAME=${{ secrets.CLOUD_NAME }} \
+              SMTP_HOST=${{ secrets.SMTP_HOST }} \
+              SMTP_PORT=${{ secrets.SMTP_PORT }} \
+              SMTP_USER=${{ secrets.SMTP_USER }} \
+              SMTP_PASS=${{ secrets.SMTP_PASS }} \
+              FROM_EMAIL=${{ secrets.FROM_EMAIL }} \
+              GEMINI_AI_API_KEY=${{ secrets.GEMINI_AI_API_KEY }} \
+              GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
+              GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
+              OAUTH_STATE_STRING=${{ secrets.OAUTH_STATE_STRING }} \
+              APP_URL=${{ secrets.URL }}
+        else
+          echo "Container app exists, updating..."
+          az containerapp update \
+            --name user-service \
+            --resource-group Zekua \
+            --image lawgenacr.azurecr.io/appsvc/staticsite:${{ github.sha }} \
+            --set-env-vars \
+              PORT=${{ env.TARGET_PORT }} \
+              ENV=${{ secrets.ENV }} \
+              MONGODB_URI=${{ secrets.MONGODB_URI }} \
+              MONGODB_DB=${{ secrets.MONGODB_DB }} \
+              ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
+              REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
+              ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
+              REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
+              API_KEY=${{ secrets.API_KEY }} \
+              API_SECRET=${{ secrets.API_SECRET }} \
+              CLOUD_NAME=${{ secrets.CLOUD_NAME }} \
+              SMTP_HOST=${{ secrets.SMTP_HOST }} \
+              SMTP_PORT=${{ secrets.SMTP_PORT }} \
+              SMTP_USER=${{ secrets.SMTP_USER }} \
+              SMTP_PASS=${{ secrets.SMTP_PASS }} \
+              FROM_EMAIL=${{ secrets.FROM_EMAIL }} \
+              GEMINI_AI_API_KEY=${{ secrets.GEMINI_AI_API_KEY }} \
+              GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
+              GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
+              OAUTH_STATE_STRING=${{ secrets.OAUTH_STATE_STRING }} \
+              APP_URL=${{ secrets.URL }}
