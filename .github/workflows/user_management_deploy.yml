@@ -1,4 +1,4 @@
-name: Build and Deploy User Service to ACA
+name: Build, Push to ACR, and Deploy to ACA
 
 on:
   push:
@@ -13,32 +13,23 @@ env:
   TARGET_PORT: '8080'
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Checkout the code
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      # 2. Log in to Azure CLI
-      - name: Log in to Azure CLI
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # 3. Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # 4. Log in to Azure Container Registry
       - name: Log in to Azure Container Registry
-        uses: docker/login-action@v3
+        uses: azure/docker-login@v1
         with:
-          registry: ${{ env.ACR_NAME }}.azurecr.io
+          login-server: ${{ env.ACR_NAME }}.azurecr.io
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # 5. Build and push Docker image
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -46,22 +37,37 @@ jobs:
           file: ./user_management/Dockerfile
           push: true
           tags: |
-            ${{ env.ACR_NAME }}.azurecr.io/${{ env.MICROSERVICE_NAME }}:latest
             ${{ env.ACR_NAME }}.azurecr.io/${{ env.MICROSERVICE_NAME }}:${{ github.sha }}
           build-args: |
             PORT=${{ env.TARGET_PORT }}
             ENV=${{ secrets.ENV }}
 
-      # 6. Deploy to Azure Container App (FIXED)
-      - name: Deploy to Azure Container App
-        uses: azure/container-apps-deploy-action@v1
-        with:
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppName: ${{ env.MICROSERVICE_NAME }}
-          containerAppEnvironment: ${{ env.CONTAINER_APP_ENV }} # Corrected parameter name
-          acrName: ${{ env.ACR_NAME }}
-          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.MICROSERVICE_NAME }}:${{ github.sha }}
-          targetPort: ${{ env.TARGET_PORT }}
-          ingress: 'external'
-            OAUTH_STATE_STRING=${{ secrets.OAUTH_STATE_STRING }}
-            APP_URL=${{ secrets.URL }}
+      - name: Deploy to Azure Container App using Azure CLI
+        run: |
+          az containerapp update \
+            --name ${{ env.MICROSERVICE_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.MICROSERVICE_NAME }}:${{ github.sha }} \
+            --set-env-vars \
+              PORT=${{ env.TARGET_PORT }} \
+              ENV=${{ secrets.ENV }} \
+              MONGODB_URI=${{ secrets.MONGODB_URI }} \
+              MONGODB_DB=${{ secrets.MONGODB_DB }} \
+              ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
+              REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
+              ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
+              REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
+              API_KEY=${{ secrets.API_KEY }} \
+              API_SECRET=${{ secrets.API_SECRET }} \
+              CLOUD_NAME=${{ secrets.CLOUD_NAME }} \
+              SMTP_HOST=${{ secrets.SMTP_HOST }} \
+              SMTP_PORT=${{ secrets.SMTP_PORT }} \
+              SMTP_USER=${{ secrets.SMTP_USER }} \
+              SMTP_PASS=${{ secrets.SMTP_PASS }} \
+              FROM_EMAIL=${{ secrets.FROM_EMAIL }} \
+              GEMINI_AI_API_KEY=${{ secrets.GEMINI_AI_API_KEY }} \
+              GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
+              GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
+              OAUTH_STATE_STRING=${{ secrets.OAUTH_STATE_STRING }} \
+              APP_URL=${{ secrets.URL }}
+        shell: bash
