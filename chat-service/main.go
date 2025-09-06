@@ -24,6 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"github.com/gin-contrib/cors"
 )
 
 // UserContextMiddleware sets user information from headers for simulation.
@@ -134,6 +135,18 @@ func main() {
 	
 	// Setup router
 	router := gin.Default()
+	config := cors.Config{
+        AllowOrigins: []string{
+            "http://localhost:3000",
+        },
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }
+    router.Use(cors.New(config))
+
 	router.StaticFile("/", "./index.html")
 	router.Use(AuthMiddleware(*jwt))
 
