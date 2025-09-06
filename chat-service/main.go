@@ -138,17 +138,18 @@ func main() {
 	
 	// Setup router
 	router := gin.Default()
-
-	// CORS middleware setup
-	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}
-	router.Use(cors.New(corsConfig))
+	config := cors.Config{
+        AllowOrigins: []string{
+            "http://localhost:3000",
+			"https://lawgen.vercel.app",
+        },
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }
+    router.Use(cors.New(config))
 
 	router.StaticFile("/", "./index.html")
 	router.Use(AuthMiddleware(*jwt))
