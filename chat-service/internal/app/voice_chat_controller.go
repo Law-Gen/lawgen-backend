@@ -10,17 +10,15 @@ import (
 	"net/textproto"
 	"strings"
 
+	"github.com/LAWGEN/lawgen-backend/chat-service/internal/config"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
 
-const sttAPIBase = "http://127.0.0.1:8000/speech-to-text/"
-const translateAPIURL = "http://127.0.0.1:8000/translate"
-const ttsAPIURL = "http://127.0.0.1:8000/text-to-speech"
-
 // VoiceChatController handles voice chat requests
 // Add to router as needed
-func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
+// VoiceChatHandlerWithConfig returns a handler using the provided config
+func VoiceChatHandlerWithConfig(chatService *usecase.ChatService, cfg *config.Config) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// 1. Receive audio file from frontend
 		file, header, err := ctx.Request.FormFile("file")
@@ -45,7 +43,7 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 
 		// 2. Send audio to STT API (use correct language endpoint)
 		lang := ctx.DefaultPostForm("language", "en")
-		sttAPIURL := fmt.Sprintf("http://127.0.0.1:8000/speech-to-text/%s?mode=file", lang)
+		sttAPIURL := fmt.Sprintf("%s%s?mode=file", cfg.STTApiBase, lang)
 		var sttBuf bytes.Buffer
 		writer := multipart.NewWriter(&sttBuf)
 		fileContentType := header.Header.Get("Content-Type")
@@ -96,7 +94,7 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 				"text":        sttResult.Text,
 				"target_lang": "en",
 			})
-			transResp, err := http.Post(translateAPIURL, "application/json", bytes.NewReader(transReqBody))
+			transResp, err := http.Post(cfg.TranslateApiUrl, "application/json", bytes.NewReader(transReqBody))
 			if err != nil || transResp.StatusCode != 200 {
 				ctx.JSON(http.StatusBadGateway, gin.H{"error": "Translation service error"})
 				return
@@ -142,7 +140,7 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 				"text":        finalAnswer,
 				"target_lang": lang,
 			})
-			transResp, err := http.Post(translateAPIURL, "application/json", bytes.NewReader(transReqBody))
+			transResp, err := http.Post(cfg.TranslateApiUrl, "application/json", bytes.NewReader(transReqBody))
 			if err == nil && transResp.StatusCode == 200 {
 				defer transResp.Body.Close()
 				var transResult struct {
@@ -160,7 +158,7 @@ func VoiceChatHandler(chatService *usecase.ChatService) gin.HandlerFunc {
 			"text":     finalAnswer,
 			"language": lang,
 		})
-		ttsResp, err := http.Post(ttsAPIURL, "application/json", bytes.NewReader(ttsReqBody))
+		ttsResp, err := http.Post(cfg.TTSApiUrl, "application/json", bytes.NewReader(ttsReqBody))
 		if err != nil || ttsResp.StatusCode != 200 {
 			ctx.JSON(http.StatusBadGateway, gin.H{"error": "TTS service error"})
 			return

@@ -1,12 +1,12 @@
 package main
 
 import (
+	client "github.com/LAWGEN/lawgen-backend/chat-service/internal/client"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/config"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/repository"
 	mongoRepo "github.com/LAWGEN/lawgen-backend/chat-service/internal/repository/mongo"
 	redisRepo "github.com/LAWGEN/lawgen-backend/chat-service/internal/repository/redis"
-	client "github.com/LAWGEN/lawgen-backend/chat-service/internal/client"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase"
 
 	// "github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase/client"
@@ -107,16 +107,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create LLM client: %v", err)
 	}
-	
+
 	var ragClient domain.RAGService
 	ragClient, err = client.NewRAGClient(cfg)
-		if err != nil {
-			log.Fatalf("Failed to initialize RAG client: %v", err)
-		}
+	if err != nil {
+		log.Fatalf("Failed to initialize RAG client: %v", err)
+	}
 	defer ragClient.Close()
 
 	// Initialize use cases
-	chatUseCase := usecase.NewChatService(cfg,redisSessionRepo,redisChatRepo,mongoSessionRepo,mongoChatRepo,llmClient,ragClient)
+	chatUseCase := usecase.NewChatService(cfg, redisSessionRepo, redisChatRepo, mongoSessionRepo, mongoChatRepo, llmClient, ragClient)
 	quizUseCase := usecase.NewQuizUseCase(quizRepo)
 
 	// Initialize controllers
@@ -124,12 +124,12 @@ func main() {
 	chatController := app.NewChatController(chatUseCase)
 	// Setup router
 	router := gin.Default()
-	router.StaticFile("/","./index.html")
+	router.StaticFile("/", "./index.html")
 	router.Use(UserContextMiddleware())
 
 	// Register routes
 	app.RegisterQuizRoutes(router, quizController, AdminAuthMiddleware())
-	app.RegisterChatRoutes(router, chatController)
+	app.RegisterChatRoutes(router, chatController, cfg)
 
 	// Start server
 	srv := &http.Server{
