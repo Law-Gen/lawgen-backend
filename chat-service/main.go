@@ -75,10 +75,13 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := repository.DBConn(ctx, cfg)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
+    db, err := repository.DBConn(ctx, cfg)
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
+    if db == nil {
+        log.Fatalf("Database connection returned nil without error")
+    }
 
 	// Initialize Redis
 	u, _ := url.Parse(cfg.RedisAddr)

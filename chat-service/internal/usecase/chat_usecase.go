@@ -11,7 +11,7 @@ import (
 
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/config"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
-	// redisRepo "github.com/LAWGEN/lawgen-backend/chat-service/internal/repository/redis"
+	"github.com/LAWGEN/lawgen-backend/chat-service/internal/util"
 )
 
 type ChatService struct {
@@ -244,9 +244,9 @@ func (s *ChatService) processQueryInternal(ctx context.Context, req QueryRequest
 		words := strings.Fields(chunk.Chunk)
 		for _, word := range words {
 			outText := word + " "
-			// If user requested non-English, translate each chunk
+			// If user requested non-English, translate each chunk using HTTP API
 			if req.Language != "en" {
-				translated, err := s.llmService.Translate(ctx, outText, req.Language)
+				translated, err := util.TranslateText(s.cfg.TranslateApiUrl, outText, req.Language)
 				if err == nil && translated != "" {
 					outText = translated + " "
 				}
