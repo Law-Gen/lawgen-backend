@@ -21,6 +21,7 @@ import (
 
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/app"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -82,7 +83,7 @@ func main() {
 
 	// Initialize Redis
 	u, _ := url.Parse(cfg.RedisAddr)
-	
+
 	password, _ := u.User.Password()
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     u.Host,
@@ -135,17 +136,17 @@ func main() {
 	
 	// Setup router
 	router := gin.Default()
-	config := cors.Config{
-        AllowOrigins: []string{
-            "http://localhost:3000",
-        },
-        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }
-    router.Use(cors.New(config))
+
+	// CORS middleware setup
+	corsConfig := cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	router.Use(cors.New(corsConfig))
 
 	router.StaticFile("/", "./index.html")
 	router.Use(AuthMiddleware(*jwt))
