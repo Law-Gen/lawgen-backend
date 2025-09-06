@@ -115,13 +115,29 @@ func (r *mongoContentRepository) GetAll(ctx context.Context, page, limit int) (*
 
 // GetContentsByGroup fetches paginated contents for a given group ID
 func (r *mongoContentRepository) GetContentByGroup(ctx context.Context, groupID string, page, limit int) (*domain.PaginatedContentResponse, error) {
+    // Step 1: Validate the incoming groupID and find the single representative document
+    // to determine the actual group name.
     objID, err := primitive.ObjectIDFromHex(groupID)
     if err != nil {
         return nil, errors.New("invalid group ID format")
     }
 
-    filter := bson.M{"group_id": objID}
+    var representativeContent domain.Content
+    // Find the single document just to get its group name
+    err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&representativeContent)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            // This means the ID sent by the client doesn't exist at all.
+            return nil, domain.ErrNotFound
+        }
+        return nil, err // Other database error
+    }
 
+    // Step 2: Now that we have the correct group name, use it to find ALL content in that group.
+    groupName := representativeContent.GroupName
+    filter := bson.M{"group_name": groupName} // Query by the correct field: group_name
+
+    // Step 3: Perform the paginated find and count using this new filter.
     opts := options.Find()
     opts.SetSkip(int64((page - 1) * limit))
     opts.SetLimit(int64(limit))
