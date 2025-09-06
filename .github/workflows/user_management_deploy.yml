@@ -26,7 +26,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./user-services  
-        file: ./user-services/Dockerfile
+        context: ./user_management 
+        file: ./user_management/Dockerfile
         push: true
         tags: lawgenacr.azurecr.io/appsvc/staticsite:${{ github.sha }}
