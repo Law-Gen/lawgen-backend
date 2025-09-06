@@ -1,0 +1,82 @@
+name: Deploy User Management to ACA
+
+on:
+  push:
+    branches:
+      - user_management
+
+# Define environment variables for the workflow
+env:
+  AZURE_CONTAINER_REGISTRY: 'lawgenacr.azurecr.io'
+  AZURE_RESOURCE_GROUP: 'Zekua' 
+  AZURE_CONTAINER_APPS_ENVIRONMENT: 'lawgen' 
+  MICROSERVICE_NAME: 'user-service'
+  DOCKERFILE_PATH: './user-service/Dockerfile'
+  DOCKER_CONTEXT_PATH: './user-service'
+  TARGET_PORT: '8080'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.DOCKER_CONTEXT_PATH }}
+        file: ${{ env.DOCKERFILE_PATH }}
+        push: true
+        tags: ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.MICROSERVICE_NAME }}:${{ github.sha }}
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Deploy to Azure Container Apps'
+      id: deploy
+      uses: azure/container-apps-deploy-action@v1
+      with:
+        resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+        containerAppName: ${{ env.MICROSERVICE_NAME }}
+        environment: ${{ env.AZURE_CONTAINER_APPS_ENVIRONMENT }}
+        acrName: 'lawgenacr' # fixed to registry name only
+        imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.MICROSERVICE_NAME }}:${{ github.sha }}
+        targetPort: ${{ env.TARGET_PORT }}
+        ingress: 'external' # set to 'internal' if you want private-only
+        envVars: |
+          PORT=${{ env.TARGET_PORT }}
+          ENV=${{ secrets.ENV }}
+        secrets: |
+          MONGODB_URI="${{ secrets.MONGODB_URI }}"
+          MONGODB_DB="${{ secrets.MONGODB_DB }}"
+          ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}"
+          REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}"
+          ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}"
+          REFRESH_TOKEN_EXPIRY="${{ secrets.REFRESH_TOKEN_EXPIRY }}"
+          API_KEY="${{ secrets.API_KEY }}"
+          API_SECRET="${{ secrets.API_SECRET }}" # fixed typo
+          CLOUD_NAME="${{ secrets.CLOUD_NAME }}"
+          SMTP_HOST="${{ secrets.SMTP_HOST }}"
+          SMTP_PORT="${{ secrets.SMTP_PORT }}"
+          SMTP_USER="${{ secrets.SMTP_USER }}"
+          SMTP_PASS="${{ secrets.SMTP_PASS }}"
+          FROM_EMAIL="${{ secrets.FROM_EMAIL }}"
+          GEMINI_AI_API_KEY="${{ secrets.GEMINI_AI_API_KEY }}"
+          GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
+          GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
+          OAUTH_STATE_STRING="${{ secrets.OAUTH_STATE_STRING }}"
+          APP_URL="${{ secrets.URL }}" # renamed for clarity
