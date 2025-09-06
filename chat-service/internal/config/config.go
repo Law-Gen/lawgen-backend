@@ -26,6 +26,7 @@ type Config struct {
 	STTApiBase              string // e.g. http://127.0.0.1:8000/speech-to-text/
 	TranslateApiUrl         string // e.g. http://127.0.0.1:8000/translate
 	TTSApiUrl               string // e.g. http://127.0.0.1:8000/text-to-speech
+	AccessSecret 			string
 }
 
 // New loads configuration from environment variables.
@@ -50,6 +51,7 @@ func New() (*Config, error) {
 		STTApiBase:              getEnv("STT_API_BASE", "http://127.0.0.1:8000/speech-to-text/"),
 		TranslateApiUrl:         getEnv("TRANSLATE_API_URL", "http://127.0.0.1:8000/translate"),
 		TTSApiUrl:               getEnv("TTS_API_URL", "http://127.0.0.1:8000/text-to-speech"),
+		AccessSecret:			 getEnv("ACCESS_TOKEN_SECRET", "your_access_token_secret"),
 	}, nil
 
 }

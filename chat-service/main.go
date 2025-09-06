@@ -122,13 +122,18 @@ func main() {
 	// Initialize controllers
 	quizController := app.NewQuizController(quizUseCase)
 	chatController := app.NewChatController(chatUseCase)
+
+	// setup middleware
+	jwt := NewJWT(cfg.AccessSecret)
+	
 	// Setup router
 	router := gin.Default()
 	router.StaticFile("/", "./index.html")
-	router.Use(UserContextMiddleware())
+	router.Use(AuthMiddleware(*jwt))
+
 
 	// Register routes
-	app.RegisterQuizRoutes(router, quizController, AdminAuthMiddleware())
+	app.RegisterQuizRoutes(router, quizController, RoleMiddleware())
 	app.RegisterChatRoutes(router, chatController, cfg)
 
 	// Start server
