@@ -21,7 +21,6 @@ import (
 
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/app"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
