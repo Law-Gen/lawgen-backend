@@ -7,7 +7,10 @@ import (
 	"io"
 	domain "lawgen/admin-service/Domain"
 	"log"
+	"net/url"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
@@ -39,7 +42,7 @@ func NewAzureBlobStorage() (domain.IContentStorage, error) {
 		return nil, fmt.Errorf("failed to create Azure Blob client: %w", err)
 	}
 
-	log.Println("Successfully connected to Azure Blob Storage.")
+	log.Println("✅ Successfully connected to Azure Blob Storage.")
 
 	return &azureBlobStorage{
 		client:        client,
@@ -55,15 +58,33 @@ func (s *azureBlobStorage) Upload(ctx context.Context, fileKey string, file io.R
 	}
 
 	url := fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", s.accountName, s.containerName, fileKey)
-	log.Printf("Successfully uploaded file to %s", url)
+	log.Printf("✅ Successfully uploaded file to %s", url)
 	return url, nil
 }
 
-func (s *azureBlobStorage) Delete(ctx context.Context, fileKey string) error {
-	_, err := s.client.DeleteBlob(ctx, s.containerName, fileKey, nil)
-	if err != nil {
-		return fmt.Errorf("failed to delete blob '%s': %w", fileKey, err)
+// normalizeFileKey ensures we only keep the blob path (handles full URLs or plain keys).
+func (s *azureBlobStorage) normalizeFileKey(fileKey string) string {
+	// If it's a full URL, parse it
+	if strings.HasPrefix(fileKey, "http") {
+		parsed, err := url.Parse(fileKey)
+		if err == nil {
+			// path.Clean strips leading slashes safely
+			return strings.TrimPrefix(path.Clean(parsed.Path), "/"+s.containerName+"/")
+		}
 	}
-	log.Printf("Successfully deleted blob %s", fileKey)
+
+	// Otherwise assume it's already a blob name
+	return fileKey
+}
+
+func (s *azureBlobStorage) Delete(ctx context.Context, fileKey string) error {
+	normalizedKey := s.normalizeFileKey(fileKey)
+
+	_, err := s.client.DeleteBlob(ctx, s.containerName, normalizedKey, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete blob '%s': %w", normalizedKey, err)
+	}
+
+	log.Printf("🗑️ Successfully deleted blob %s", normalizedKey)
 	return nil
 }
