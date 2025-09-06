@@ -1,10 +1,15 @@
+# Ignore the Git files
 .git
-tmp
-vendor
-*.md
-*.toml
-*.swp
+.gitignore
+
+# Ignore IDE files
 .idea
 .DS_Store
-.gitignore
-protos/*
+
+# Ignore build artifacts (the binary and any temporary files)
+chat-service
+tmp
+vendor
+
+# Ignore other files you don't need in the final image
+*.swp
