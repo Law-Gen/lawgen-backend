@@ -31,7 +31,7 @@ func (c *AnalyticsController) ViewContentAndRedirect(ctx *gin.Context) {
     contentID := ctx.Param("id")
 
     // Get user info from context (populated by middleware)
-    userID, _ := ctx.Get("userID")
+    userID, _ := ctx.Get("user_id")
     age, _ := ctx.Get("age")
     gender, _ := ctx.Get("gender")
 

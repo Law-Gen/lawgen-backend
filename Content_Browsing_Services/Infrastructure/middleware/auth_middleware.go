@@ -2,7 +2,8 @@ package middleware
 
 import (
 	infrastructure "lawgen/admin-service/Infrastructure"
-	"log"
+
+	// "log"
 	"net/http"
 	"strings"
 
@@ -42,14 +43,14 @@ func AuthMiddleware(jwtHandler JWT) gin.HandlerFunc {
         }
 
         // Set claims in context
-        c.Set("userID", claims.UserID)
+        c.Set("user_id", claims.UserID)
         c.Set("role", claims.Role)
         c.Set("plan", claims.Plan)
         c.Set("age", claims.Age)
         c.Set("gender", claims.Gender)
 
-        log.Printf("[AUTH] User=%s Role=%s Plan=%s Age=%d Gender=%s",
-            claims.UserID, claims.Role, claims.Plan, claims.Age, claims.Gender)
+        // fmt.Printf("[AUTH] User=%s Role=%s Plan=%s Age=%d Gender=%s",
+        //     claims.UserID, claims.Role, claims.Plan, claims.Age, claims.Gender)
 
         c.Next()
     }

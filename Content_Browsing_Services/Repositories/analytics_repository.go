@@ -97,7 +97,7 @@ func (r *mongoAnalyticsRepository) GetQueryTrends(ctx context.Context, start, en
 	// The main aggregation pipeline.
 	pipeline := mongo.Pipeline{
 		bson.D{{"$match", bson.D{
-			{"event_type", "QUERY"},
+			{"event_type", "CONTENT_VIEW"},
 			{"timestamp", bson.D{{"$gte", startUnix}, {"$lte", endUnix}}},
 		}}},
 		bson.D{{"$facet", bson.D{
