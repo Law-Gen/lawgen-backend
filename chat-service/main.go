@@ -82,7 +82,7 @@ func main() {
 
 	// Initialize Redis
 	u, _ := url.Parse(cfg.RedisAddr)
-	
+
 	password, _ := u.User.Password()
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     u.Host,
