@@ -40,13 +40,13 @@ jobs:
           PORT=${{ env.TARGET_PORT }}
           ENV=${{ secrets.ENV }}
 
-    # 5. Deploy to Azure Container App using dedicated GitHub Action
+    # 5. Deploy to Azure Container App
     - name: Deploy to Azure Container App
       uses: azure/container-apps-deploy@v1
       with:
         app-name: user-service
         resource-group: Zekua
-        environment: lawgen   # your Container Apps environment name
+        environment: lawgen                       # Your Container Apps environment
         image: lawgenacr.azurecr.io/appsvc/staticsite:${{ github.sha }}
         registry-login-server: lawgenacr.azurecr.io
         registry-username: ${{ secrets.ACR_USERNAME }}
