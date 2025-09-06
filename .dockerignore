@@ -1,0 +1,10 @@
+.git
+tmp
+vendor
+*.md
+*.toml
+*.swp
+.idea
+.DS_Store
+.gitignore
+protos/*
