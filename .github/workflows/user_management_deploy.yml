@@ -3,7 +3,7 @@ name: Deploy User Management to ACA
 on:
   push:
     branches:
-      - user_management
+      - user-service
 
 # Define environment variables for the workflow
 env:
