@@ -7,7 +7,7 @@ import (
 	"user_management/infrastructure/middleware"
 
 	"github.com/didip/tollbooth/v7/limiter"
-	"github.com/didip/tollbooth_gin"
+	// "github.com/didip/tollbooth_gin"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -15,7 +15,7 @@ import (
 
 func AuthRouter(r *gin.Engine, authController *controller.AuthController, jwt *auth.JWT, authLimiter *limiter.Limiter) {
     authGroup := r.Group("/auth")
-    authGroup.Use(tollbooth_gin.LimitHandler(authLimiter)) // Apply rate limiting middleware
+    // authGroup.Use(tollbooth_gin.LimitHandler(authLimiter)) // Apply rate limiting middleware
     {
         authGroup.POST("/register", authController.Register)
         authGroup.POST("/login", authController.Login)
@@ -36,7 +36,7 @@ func AuthRouter(r *gin.Engine, authController *controller.AuthController, jwt *a
 
 func OAuthRouter(r *gin.Engine, oauthController *controller.OAuthController, authLimiter *limiter.Limiter) {
     oauthGroup := r.Group("/auth/google")
-    oauthGroup.Use(tollbooth_gin.LimitHandler(authLimiter)) // Apply rate limiting middleware
+    // oauthGroup.Use(tollbooth_gin.LimitHandler(authLimiter)) // Apply rate limiting middleware
     {
         oauthGroup.POST("/", oauthController.HandleGoogleLogin)
     }
@@ -47,15 +47,15 @@ func UserRouter(r *gin.Engine, userController *controller.UserController, jwt *a
     {
         userGroup.Use(middleware.AuthMiddleware(jwt)) // Apply auth middleware
         {
-            userGroup.PUT("/users/me", tollbooth_gin.LimitHandler(contentCreationLimiter), userController.HandleUpdateUser)
-            userGroup.GET("/users/me", tollbooth_gin.LimitHandler(contentReadLimiter), userController.HandleGetUserByID)
-            userGroup.PUT("/users/me/change-password", tollbooth_gin.LimitHandler(contentCreationLimiter), userController.HandleChangePassword)
+            userGroup.PUT("/users/me", userController.HandleUpdateUser)
+            userGroup.GET("/users/me", userController.HandleGetUserByID)
+            userGroup.PUT("/users/me/change-password", userController.HandleChangePassword)
             // Admin routes
-            userGroup.POST("/admin/promote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandlePromote)
-            userGroup.POST("/admin/demote", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDemote)
-			userGroup.GET("/admin/users", tollbooth_gin.LimitHandler(contentReadLimiter), middleware.RoleMiddleware(), userController.HandleGetAllUsers)
-            userGroup.POST("/admin/deactivate", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleDeactivateUser)
-            userGroup.POST("/admin/activate", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.RoleMiddleware(), userController.HandleActivateUser)
+            userGroup.POST("/admin/promote", middleware.RoleMiddleware(), userController.HandlePromote)
+            userGroup.POST("/admin/demote", middleware.RoleMiddleware(), userController.HandleDemote)
+			userGroup.GET("/admin/users", middleware.RoleMiddleware(), userController.HandleGetAllUsers)
+            userGroup.POST("/admin/deactivate", middleware.RoleMiddleware(), userController.HandleDeactivateUser)
+            userGroup.POST("/admin/activate", middleware.RoleMiddleware(), userController.HandleActivateUser)
 		}
 	}
 }
@@ -64,9 +64,9 @@ func SubscriptionRouter(r *gin.Engine, subscriptionController *controller.Subscr
     subscriptionGroup := r.Group("/subscriptions")
     {
         {
-            subscriptionGroup.GET("/plans", tollbooth_gin.LimitHandler(contentReadLimiter), subscriptionController.GetAllPlans)
-            subscriptionGroup.POST("/subscribe", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.AuthMiddleware(jwt),  subscriptionController.CreateSubscription)
-            subscriptionGroup.POST("/cancel", tollbooth_gin.LimitHandler(contentCreationLimiter), middleware.AuthMiddleware(jwt),  subscriptionController.CancelSubscription)
+            subscriptionGroup.GET("/plans", subscriptionController.GetAllPlans)
+            subscriptionGroup.POST("/subscribe", middleware.AuthMiddleware(jwt),  subscriptionController.CreateSubscription)
+            subscriptionGroup.POST("/cancel", middleware.AuthMiddleware(jwt),  subscriptionController.CancelSubscription)
         }
     }
 }
