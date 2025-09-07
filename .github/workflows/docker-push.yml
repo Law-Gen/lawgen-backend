@@ -30,6 +30,5 @@ jobs:
         file: ./Ai-services/Dockerfile
         push: true
         tags: |
-          lawgenacr.azurecr.io/ai-service:latest
-          lawgenacr.azurecr.io/ai-service:${{ github.sha }}
-
+          lawgenacr.azurecr.io/fastapi-app:${{ github.run_id }}
+          lawgenacr.azurecr.io/fastapi-app:latest
