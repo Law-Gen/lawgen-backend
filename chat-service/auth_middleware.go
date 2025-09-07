@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
 func AuthMiddleware(jwtHandler JWT) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -14,6 +15,7 @@ func AuthMiddleware(jwtHandler JWT) gin.HandlerFunc {
 			c.Set("plan_id", "free")
 			c.Set("userRole", "user")
 			c.Next()
+			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
@@ -24,12 +26,12 @@ func AuthMiddleware(jwtHandler JWT) gin.HandlerFunc {
 			c.Set("plan_id", "free")
 			c.Set("userRole", "user")
 			c.Next()
+			return
 		}
 		if claims == nil {
-    		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
-    		return
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+			return
 		}
-
 
 		// Set claims in context
 		c.Set("userID", claims.UserID)
