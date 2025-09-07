@@ -35,3 +35,5 @@ jobs:
             lawgenacr.azurecr.io/fastapi-app:latest
           cache-from: type=registry,ref=lawgenacr.azurecr.io/fastapi-app:cache
           cache-to: type=registry,ref=lawgenacr.azurecr.io/fastapi-app:cache,mode=max
+          pull: true
+          platforms: linux/amd64
