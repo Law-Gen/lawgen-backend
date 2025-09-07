@@ -206,5 +206,11 @@ async def translate_stream(websocket: WebSocket):
         await websocket.close(code=1011, reason="An internal error occurred.")
 # --- Uvicorn server start block ---
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True)
+
+    # Get port from environment variable, default to 8000
+    port = int(os.environ.get("PORT", 8000))
+
+    # Do NOT use reload in production
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
