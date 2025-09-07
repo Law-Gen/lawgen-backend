@@ -178,7 +178,10 @@ func (s *ChatService) processQueryInternal(ctx context.Context, req QueryRequest
 	ragResult, err := s.ragService.Retrieve(ctx, refinedQuery, userParams.MaxReferences)
 	log.Printf("\n### RAG Service\nQuery: %s\nResult: %+v\nError: %v\n", refinedQuery, ragResult, err)
 	if err != nil {
-		resChan <- ChatResponseChunk{Error: fmt.Errorf("failed to retrieve RAG documents: %w", err)}
+		// Log the real error for debugging
+		log.Printf("RAG retrieval error: %v", err)
+		// Send a generic error to the user
+		resChan <- ChatResponseChunk{Error: fmt.Errorf("Sorry, the legal document retrieval service is temporarily unavailable. Please try again later.")}
 		return
 	}
 
