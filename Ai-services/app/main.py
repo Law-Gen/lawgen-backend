@@ -204,3 +204,7 @@ async def translate_stream(websocket: WebSocket):
     except Exception as e:
         logger.error(f"An unexpected error occurred in the WebSocket: {e}")
         await websocket.close(code=1011, reason="An internal error occurred.")
+# --- Uvicorn server start block ---
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True)
