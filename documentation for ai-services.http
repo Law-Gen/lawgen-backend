@@ -1,6 +1,6 @@
 
 # Variables
-@api_url = http://127.0.0.1:8000
+@api_url = "url"
 ### ====================================================
 ### Ethiopian Legal AI Assistant – API Documentation
 ### ====================================================
@@ -24,11 +24,12 @@
 ###   legal documents and returns the most relevant results.
 ###
 ### Request:
+
+###
 POST {{api_url}}/ask
 Content-Type: application/json
-
 {
-  "query": "የኢትዮጵያ ፌዴራላዊ ዲሞክራሲያዊ ሪፐብሊክ ሕገ መንግሥት የሀገሪቱ የበላይ ሕግ ነው፡፡ ከዚህ ሕገ መንግሥት ጋር የሚቃረን ማንኛውም ሕግ፣ ልማዳዊ አሠራር ወይም የመንግሥት አካል አፈጻጸም ተፈጻሚነት አይኖረውም",
+  "query": "prime minister power",
   "k": 3
 }
 
@@ -69,8 +70,8 @@ POST {{api_url}}/translate
 Content-Type: application/json
 
 {
-  "text": "My lawyer is very helpful.",
-  "target_lang": "am"
+  "text": "murder",
+  "target_lang": "en"
 }
 
 ### Sample Response:

@@ -11,8 +11,8 @@ from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from engine import ask_question
-from azure_utils import transcribe_speech, transcribe_file_once, synthesize_speech, translate_text
+from app.engine import ask_question
+from app.azure_utils import transcribe_speech, transcribe_file_once, synthesize_speech, translate_text
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
