@@ -29,4 +29,7 @@ jobs:
         context: ./Ai-services  
         file: ./Ai-services/Dockerfile
         push: true
-        tags: lawgenacr.azurecr.io/appsvc/staticsite:latest
+        tags: |
+          lawgenacr.azurecr.io/ai-service:latest
+          lawgenacr.azurecr.io/ai-service:${{ github.sha }}
+
