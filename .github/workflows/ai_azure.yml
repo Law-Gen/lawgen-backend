@@ -3,7 +3,7 @@ name: Build and Push FastAPI (Test Slim)
 on:
   push:
     branches:
-      - ai-service-slim  
+      - ai-azure 
 
 jobs:
   build-and-push:
