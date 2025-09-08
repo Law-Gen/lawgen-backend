@@ -30,6 +30,6 @@ jobs:
         file: ./Ai-services/Dockerfile
         push: true
         tags: |
-          lawgenacr.azurecr.io/ai-service:latest
-          lawgenacr.azurecr.io/ai-service:${{ github.sha }}
+          lawgenacr.azurecr.io/Ai_Service:latest
+          lawgenacr.azurecr.io/Ai_Service:${{ github.sha }}
 
