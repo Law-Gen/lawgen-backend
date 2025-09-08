@@ -30,17 +30,17 @@ type UserParams struct {
 func GetUserParamsFromPlanID(planID string) UserParams {
 	switch SubscriptionTier(planID) {
 	case TierFree:
-		return UserParams{MaxAnswerWords: 150, MaxReferences: 7, ContextWindow: 2, SaveHistory: true}
+		return UserParams{MaxAnswerWords: 500, MaxReferences: 10, ContextWindow: 2, SaveHistory: true}
 	case TierBasic:
-		return UserParams{MaxAnswerWords: 250, MaxReferences: 10, ContextWindow: 3, SaveHistory: true}
+		return UserParams{MaxAnswerWords: 500, MaxReferences: 10, ContextWindow: 3, SaveHistory: true}
 	case TierPro:
 		return UserParams{MaxAnswerWords: 500, MaxReferences: 10, ContextWindow: 5, SaveHistory: true}
 	case TierEnterprise:
 		return UserParams{MaxAnswerWords: 500, MaxReferences: 15, ContextWindow: 5, SaveHistory: true}
 	case TierGuest: // Visitor
-		return UserParams{MaxAnswerWords: 80, MaxReferences: 5, ContextWindow: 1, SaveHistory: false}
+		return UserParams{MaxAnswerWords: 500, MaxReferences: 10, ContextWindow: 1, SaveHistory: true}
 	default:
-		return UserParams{MaxAnswerWords: 80, MaxReferences: 5, ContextWindow: 1, SaveHistory: false} // Default guest-like
+		return UserParams{MaxAnswerWords: 500, MaxReferences: 10, ContextWindow: 1, SaveHistory: true} // Default guest-like
 	}
 }
 
