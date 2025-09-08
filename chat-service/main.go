@@ -144,7 +144,7 @@ func main() {
 			"https://lawgen-frontend-wine.vercel.app",
         },
         AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type", "planID", "userID"},
         ExposeHeaders:    []string{"Content-Length"},
         AllowCredentials: true,
         MaxAge:           12 * time.Hour,
