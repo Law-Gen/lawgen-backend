@@ -6,8 +6,8 @@ import (
 	"lawgen/admin-service/Infrastructure/middleware"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
- 	"github.com/gin-contrib/cors"
 )
 
 // NewRouter sets up the Gin router with all routes and middleware
@@ -23,7 +23,7 @@ func NewRouter(
 	config := cors.Config{
         AllowOrigins: []string{
             "http://localhost:3000",
-			"https://lawgen.vercel.app/",
+			"https://lawgen.vercel.app",
         },
         AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
