@@ -32,5 +32,3 @@ jobs:
         tags: |
           lawgenacr.azurecr.io/ai-service-slim:latest
           lawgenacr.azurecr.io/ai-service-slim:${{ github.sha }}
-        cache-from: type=registry,ref=lawgenacr.azurecr.io/ai-service-slim:cache
-        cache-to: type=registry,ref=lawgenacr.azurecr.io/ai-service-slim:cache,mode=max
