@@ -1,20 +1,17 @@
-# Use Python slim image
 FROM python:3.12-slim
 
-# Set working directory
-WORKDIR /app
+# Set the working directory to the project root
+WORKDIR /
 
-# Copy requirements from root of Ai-services
+# Copy and install dependencies
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app folder into container
-COPY ./app ./app
+# Copy the whole project into the container root
+COPY . .
 
-# Expose the port (optional)
+# Expose FastAPI port
 EXPOSE 8000
 
-# Run Uvicorn using Azure $PORT
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Run the FastAPI app
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
