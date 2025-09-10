@@ -19,12 +19,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	// "github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/app"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
-	"github.com/gin-contrib/cors"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 // UserContextMiddleware sets user information from headers for simulation.
@@ -75,13 +80,17 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-    db, err := repository.DBConn(ctx, cfg)
-    if err != nil {
-        log.Fatalf("Failed to connect to database: %v", err)
-    }
-    if db == nil {
-        log.Fatalf("Database connection returned nil without error")
-    }
+	db, err := repository.DBConn(ctx, cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	if db == nil {
+		log.Fatalf("Database connection returned nil without error")
+	}
+	// Ensure MongoDB indexes for performance
+	if err := repository.EnsureIndexes(db); err != nil {
+		log.Fatalf("Failed to ensure MongoDB indexes: %v", err)
+	}
 
 	// Initialize Redis
 	u, _ := url.Parse(cfg.RedisAddr)
@@ -134,26 +143,38 @@ func main() {
 	chatController := app.NewChatController(chatUseCase)
 
 	// setup middleware
-	jwt := NewJWT(cfg.AccessSecret)
-	
+	// jwt := NewJWT(cfg.AccessSecret)
+
 	// Setup router
 	router := gin.Default()
-	config := cors.Config{
-        AllowOrigins: []string{
-            "http://localhost:3000",
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	corsConfig := cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:3000",
 			"https://lawgen-frontend-wine.vercel.app",
-        },
-        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type", "planID", "userID"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }
-    router.Use(cors.New(config))
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type", "planID", "userID"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	router.Use(cors.New(corsConfig))
 
 	router.StaticFile("/", "./index.html")
-	router.Use(AuthMiddleware(*jwt))
+	// router.Use(AuthMiddleware(*jwt))
+	router.Use(UserContextMiddleware())
 
+	// Prometheus middleware for Gin
+	p := ginprometheus.NewPrometheus("chat_service")
+	p.Use(router)
+
+	// Expose /metrics endpoint for Prometheus
+	// router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Register custom Prometheus metrics
+	prometheus.MustRegister(app.ChatLatencyHistogram)
 
 	// Register routes
 	app.RegisterQuizRoutes(router, quizController, RoleMiddleware())

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	
+
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/usecase"
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/util"
@@ -29,6 +29,12 @@ type QueryRequest struct {
 }
 
 func (c *ChatController) postQuery(ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		latency := time.Since(start).Seconds()
+		ChatLatencyHistogram.WithLabelValues("/chat/query").Observe(latency)
+	}()
+
 	// 1. Getting Inputs (request, userID, planID)
 	userID, _ := ctx.Get("userID") // Will be empty string for guests if not set by middleware
 	planID, _ := ctx.Get("planID") // Will be empty string or "visitor" for guests

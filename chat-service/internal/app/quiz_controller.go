@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/LAWGEN/lawgen-backend/chat-service/internal/domain"
 
@@ -20,6 +21,12 @@ func NewQuizController(quizUseCase domain.IQuizUseCase) *QuizController {
 // --- Public Handler Methods ---
 
 func (c *QuizController) GetCategories(ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		latency := time.Since(start).Seconds()
+		ChatLatencyHistogram.WithLabelValues("/api/v1/quizzes/categories").Observe(latency)
+	}()
+
 	page, _ := strconv.ParseInt(ctx.DefaultQuery("page", "1"), 10, 64)
 	limit, _ := strconv.ParseInt(ctx.DefaultQuery("limit", "10"), 10, 64)
 
@@ -32,6 +39,12 @@ func (c *QuizController) GetCategories(ctx *gin.Context) {
 }
 
 func (c *QuizController) GetQuizzesByCategory(ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		latency := time.Since(start).Seconds()
+		ChatLatencyHistogram.WithLabelValues("/api/v1/quizzes/categories/:categoryId").Observe(latency)
+	}()
+
 	categoryID := ctx.Param("categoryId")
 	page, _ := strconv.ParseInt(ctx.DefaultQuery("page", "1"), 10, 64)
 	limit, _ := strconv.ParseInt(ctx.DefaultQuery("limit", "10"), 10, 64)
@@ -45,6 +58,12 @@ func (c *QuizController) GetQuizzesByCategory(ctx *gin.Context) {
 }
 
 func (c *QuizController) GetQuiz(ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		latency := time.Since(start).Seconds()
+		ChatLatencyHistogram.WithLabelValues("/api/v1/quizzes/:quizId").Observe(latency)
+	}()
+
 	quizID := ctx.Param("quizId")
 	quiz, err := c.quizUseCase.GetQuiz(ctx.Request.Context(), quizID)
 	if err != nil {
@@ -55,6 +74,12 @@ func (c *QuizController) GetQuiz(ctx *gin.Context) {
 }
 
 func (c *QuizController) GetQuestionsByQuiz(ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		latency := time.Since(start).Seconds()
+		ChatLatencyHistogram.WithLabelValues("/api/v1/quizzes/:quizId/questions").Observe(latency)
+	}()
+
 	quizID := ctx.Param("quizId")
 	quiz, err := c.quizUseCase.GetQuiz(ctx.Request.Context(), quizID)
 	if err != nil {
