@@ -19,7 +19,7 @@ jobs:
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
       with:
-        login-server: lawgenacr.azurecr.io
+        login-server: lawgen.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
@@ -30,5 +30,5 @@ jobs:
         file: ./Ai-services/Dockerfile
         push: true
         tags: |
-          lawgenacr.azurecr.io/ai-service-slim:latest
-          lawgenacr.azurecr.io/ai-service-slim:${{ github.sha }}
+          lawgen.azurecr.io/ai-service-slim:latest
+          lawgen.azurecr.io/ai-service-slim:${{ github.sha }}
