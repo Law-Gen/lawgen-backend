@@ -1,0 +1,142 @@
+
+# Variables
+@api_url = "url"
+### ====================================================
+### Ethiopian Legal AI Assistant – API Documentation
+### ====================================================
+### This file contains example requests for all endpoints.
+### You can run them directly in VS Code (with REST Client)
+### or import into tools like Postman.
+###
+### Endpoints:
+###   1. /ask             – Ask legal questions (RAG)
+###   2. /translate       – Translate text (English ↔ Amharic)
+###   3. /speech-to-text  – Convert speech to text (STT)
+###   4. /text-to-speech  – Convert text to speech (TTS)
+### ====================================================
+
+
+### ----------------------------------------------------
+### 1. Ask Legal Questions (RAG)
+### ----------------------------------------------------
+### Purpose:
+###   Send a question about Ethiopian law. The system searches
+###   legal documents and returns the most relevant results.
+###
+### Request:
+
+###
+POST {{api_url}}/ask
+Content-Type: application/json
+{
+  "query": "prime minister power",
+  "k": 3
+}
+
+### Sample Response:
+# {
+#   "results": [
+#     {
+#       "content": "Article 74 Powers and Functions of the Prime Minister ...",
+#       "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+#       "article_number": "74",
+#       "topics": "Prime Minister, powers, functions, Chief Executive, Commander-in-Chief, appointments, supervision, reporting"
+#     },
+#     {
+#       "content": "CHAPTER EIGHT THE EXECUTIVE Article 72 The Powers of the Executive ...",
+#       "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+#       "article_number": "72",
+#       "topics": "Executive, Federal Government, Prime Minister, Council of Ministers, responsibility, term of office"
+#     },
+#     {
+#       "content": "Article 73 Appointment of the Prime Minister ...",
+#       "source": "Constitution of the Federal Democratic Republic of Ethiopia",
+#       "article_number": "73",
+#       "topics": "Prime Minister, appointment, election, House of Peoples' Representatives, political parties, government"
+#     }
+#   ],
+#   "message": "Found 3 relevant legal documents."
+# }
+
+
+### ----------------------------------------------------
+### 2. Translate Text
+### ----------------------------------------------------
+### Purpose:
+###   Translate text between English and Amharic.
+###
+### Request:
+POST {{api_url}}/translate
+Content-Type: application/json
+
+{
+  "text": "murder",
+  "target_lang": "en"
+}
+
+### Sample Response:
+# {
+#   "translated_text": "የእኔ ጠበቃ በጣም አጋዥ ነው።"
+# }
+
+
+### ----------------------------------------------------
+### 3. Speech-to-Text (STT)
+### ----------------------------------------------------
+### Purpose:
+###   Upload an audio file (voice recording) and convert it to text.
+###   Parameters:
+###     - {language} = "en" (English) or "am" (Amharic)
+###     - mode = "file" (whole file) or "stream" (continuous)
+###
+### Example (File mode):
+POST {{api_url}}/speech-to-text/en?mode=file
+Content-Type: multipart/form-data
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="sample.wav"
+Content-Type: audio/wav
+
+< ./sample.wav
+--boundary--
+
+### Sample Response:
+# {
+#   "text": "The Prime Minister is the Chief Executive of the country."
+# }
+
+### Example (Stream mode – still using a file for now):
+POST {{api_url}}/speech-to-text/en?mode=stream
+Content-Type: multipart/form-data
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="sample.wav"
+Content-Type: audio/wav
+
+< ./sample.wav
+--boundary--
+
+### Sample Response:
+# {
+#   "text": "The Prime Minister shall submit nominees for ministerial posts."
+# }
+
+
+### ----------------------------------------------------
+### 4. Text-to-Speech (TTS)
+### ----------------------------------------------------
+### Purpose:
+###   Convert text into natural-sounding speech (MP3 audio).
+###   Supports English and Amharic voices.
+###
+### Request:
+POST {{api_url}}/text-to-speech
+Content-Type: application/json
+
+{
+  "text": "Hello, welcome to the legal assistant.",
+  "language": "en"
+}
+
+### Sample Response:
+# (Binary MP3 file is returned – save or play in your client)
