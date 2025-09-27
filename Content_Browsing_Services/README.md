@@ -243,6 +243,13 @@ These are the public-facing APIs consumed directly by the Web and Mobile applica
 | `/chat/sessions` | `GET` | Get user's chat history (a list of all chat sessions). | `?page=1&limit=10` | `200 OK` `{"items": [{"id": "chat_session_1", "title": "Inheritance laws in Ethiopia", "timestamp": "2023-10-26T10:30:00Z"}, {"id": "chat_session_2", "title": "Requirements for forming a business", "timestamp": "..."}], "total_items": 2, "total_pages": 1, "current_page": 1, "page_size": 10}` | `401 UNAUTHORIZED` |
 | `/chat/sessions/{sessionId}` | `GET` | Get the full conversation for a specific chat session. | *(Auth Header)* | `200 OK` `{"id": "chat_session_1", "title": "Inheritance laws...", "messages": [{"role": "user", "content": "How do inheritance laws..."}, {"role": "ai", "content": "Under Ethiopian Civil Code...", "sources": [...]}, {"role": "user", "content": "Explain Article 842 further."}]}` | `401 UNAUTHORIZED`, `404 NOT_FOUND` |
 | `/chat/sessions/{sessionId}/followup` | `POST` | Submit a follow-up question within an existing chat session. | `{"followup_question": "Explain Article 842 further."}` | `200 OK` `{"summary": "Article 842 specifies...", "sources": ["Article 842 Civil Code"]}` | `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 NOT_FOUND` (sessionId invalid), `500 SERVER_ERROR` |
+| `/chats/voice-query` | `POST` | Submit a voice query (audio file) and receive an audio answer in the same language. | `multipart/form-data` with `file` (audio), `language` (`en` or `am`) | `200 OK` (audio/mpeg, MP3 audio response) | `400 INVALID_INPUT`, `500 SERVER_ERROR` |
+**Voice Chat API Notes:**
+- Request: `multipart/form-data` with `file` (audio) and `language` (`en` or `am`).
+- Response: `audio/mpeg` (MP3 audio, same language as request).
+- On error, a JSON error object is returned.
+- On success, the response is a raw audio file (not JSON).
+- Frontends must play the response as audio, not parse as JSON.
 
 #### 4.4. Quizzes (Chat & Quiz Service - F)
 

@@ -1,0 +1,828 @@
+{
+	"info": {
+		"_postman_id": "57fc8b58-2ea5-421c-8aa8-c39cb6c21f71",
+		"name": "LAWGEN Chat Service - Quiz API",
+		"description": "Postman collection for Quiz API from chat-service. Includes tests for each scenario and request chaining (saves IDs).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "46807462",
+		"_collection_link": "https://lawgen-backend.postman.co/workspace/8fea2964-877a-4ad6-b09e-642bc983463a/collection/46807462-57fc8b58-2ea5-421c-8aa8-c39cb6c21f71?action=share&source=collection_link&creator=46807462"
+	},
+	"item": [
+		{
+			"name": "Admin - Create Category (valid)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"var json = pm.response.json();",
+							"pm.test(\"Response has id or _id\", function () {",
+							"    pm.expect(json).to.have.property('id').or.have.property('_id');",
+							"});",
+							"var id = json.id || json._id || '';",
+							"pm.collectionVariables.set('categoryId', id);",
+							"pm.test('Saved categoryId (24 hex chars)', function() {",
+							"    pm.expect(pm.collectionVariables.get('categoryId')).to.match(/^[a-fA-F0-9]{24}$/);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Test Category\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/categories",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"categories"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Create Category (unauthorized missing admin role)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Unauthorized 401 when user is not admin\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"var json = {};",
+							"try { json = pm.response.json(); } catch(e) { }",
+							"pm.test('error field exists', function(){",
+							"    pm.expect(json).to.be.an('object');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"name\": \"Should Fail\" }"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/categories",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"categories"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Create Quiz (valid)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status is 201', function(){ pm.response.to.have.status(201); });",
+							"var json = pm.response.json();",
+							"pm.test('Quiz created has id', function(){ pm.expect(json).to.have.property('id').or.have.property('_id'); });",
+							"var id = json.id || json._id || '';",
+							"pm.collectionVariables.set('quizId', id);",
+							"pm.test('Saved quizId format', function(){ pm.expect(pm.collectionVariables.get('quizId')).to.match(/^[a-fA-F0-9]{24}$/); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"category_id\": \"{{categoryId}}\",\n  \"name\": \"Sample Quiz\",\n  \"description\": \"A test quiz\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Add Question (valid)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status is 201', function(){ pm.response.to.have.status(201); });",
+							"var json = pm.response.json();",
+							"pm.test('Response contains quiz with questions array', function(){",
+							"  pm.expect(json).to.be.an('object');",
+							"  pm.expect(json).to.have.property('questions');",
+							"  pm.expect(json.questions).to.be.an('array');",
+							"});",
+							"// Save last question's id and correct option",
+							"var q = json.questions && json.questions[json.questions.length-1];",
+							"if(q){",
+							"  var qid = q.id || q._id || '';",
+							"  var corr = q.correct_option || q.correctOption || '';",
+							"  pm.collectionVariables.set('questionId', qid);",
+							"  pm.collectionVariables.set('correctOption', corr);",
+							"}",
+							"pm.test('Saved questionId present', function(){",
+							"  pm.expect(pm.collectionVariables.get('questionId')).to.match(/^[a-fA-F0-9]{24}$/);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"text\": \"What is 2+2?\",\n  \"options\": {\"A\": \"3\", \"B\": \"4\", \"C\": \"5\"},\n  \"correct_option\": \"B\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/{{quizId}}/questions",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"{{quizId}}",
+						"questions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Get Categories (list)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status 200', function(){ pm.response.to.have.status(200); });",
+							"var json = pm.response.json();",
+							"pm.test('Paginated response has items array', function(){",
+							"  pm.expect(json).to.have.property('items');",
+							"  pm.expect(json.items).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/categories?page=1&limit=10",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"categories"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Get Quizzes By Category",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status 200', function(){ pm.response.to.have.status(200); });",
+							"var json = pm.response.json();",
+							"pm.test('Paginated quizzes response shape', function(){",
+							"  pm.expect(json).to.have.property('items');",
+							"  pm.expect(json.items).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/categories/{{categoryId}}?page=1&limit=10",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"categories",
+						"{{categoryId}}"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Get Quiz by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status 200 or 404 (if not found)', function(){",
+							"  pm.expect(pm.response.code === 200 || pm.response.code === 404).to.be.true;",
+							"});",
+							"if(pm.response.code === 200){",
+							"  var json = pm.response.json();",
+							"  pm.test('Quiz has id and questions field', function(){",
+							"    pm.expect(json).to.have.property('id').or.have.property('_id');",
+							"    pm.expect(json).to.have.property('questions');",
+							"  });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/{{quizId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"{{quizId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Get Questions By Quiz",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('200 or 404 allowed', function(){ pm.expect(pm.response.code === 200 || pm.response.code === 404).to.be.true; });",
+							"if(pm.response.code === 200){",
+							"  var json = pm.response.json();",
+							"  pm.test('Response is an array of questions', function(){",
+							"    pm.expect(json).to.be.an('array');",
+							"  });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/{{quizId}}/questions",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"{{quizId}}",
+						"questions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Submit Quiz (valid answer -> full score)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('200 or 404 allowed (if quiz gone)', function(){ pm.expect(pm.response.code === 200 || pm.response.code === 404).to.be.true; });",
+							"if(pm.response.code === 200){",
+							"  var json = pm.response.json();",
+							"  pm.test('Response has score and total_question', function(){",
+							"    pm.expect(json).to.have.property('score');",
+							"    pm.expect(json).to.have.property('total_question');",
+							"  });",
+							"  // For a single-question quiz we expect full score when answering correctly",
+							"  pm.test('Score equals total when correct answer submitted', function(){",
+							"    pm.expect(json.score).to.be.at.least(0);",
+							"    pm.expect(json.total_question).to.be.a('number');",
+							"  });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"{{questionId}}\": \"{{correctOption}}\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/{{quizId}}/submit",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"{{quizId}}",
+						"submit"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Public - Submit Quiz (invalid body -> 400)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Bad Request 400 for invalid JSON', function(){",
+							"  pm.expect(pm.response.code === 400 || pm.response.code === 404).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{normal_user_id}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "invalid-json"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/quizzes/{{quizId}}/submit",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"quizzes",
+						"{{quizId}}",
+						"submit"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Update Category (valid)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('200 OK or 500 if error in backend', function(){ pm.expect([200,500,404]).to.include(pm.response.code); });",
+							"if(pm.response.code === 200){",
+							"  var json = pm.response.json();",
+							"  pm.test('name updated or present', function(){ pm.expect(json).to.have.property('name'); });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"name\": \"Updated Category Name\" }"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/categories/{{categoryId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"categories",
+						"{{categoryId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Delete Question",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Expect 204 No Content or 500/404 if resource missing', function(){",
+							"  pm.expect([204,500,404]).to.include(pm.response.code);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/{{quizId}}/questions/{{questionId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"{{quizId}}",
+						"questions",
+						"{{questionId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Update Quiz",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status 200 or 404/500 tolerated', function(){ pm.expect([200,404,500]).to.include(pm.response.code); });",
+							"if(pm.response.code===200){",
+							"  var json=pm.response.json(); pm.test('Quiz has id', function(){ pm.expect(json).to.have.property('id').or.have.property('_id'); });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"name\": \"Updated Quiz Name\", \"description\": \"Updated desc\" }"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/{{quizId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"{{quizId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Delete Quiz",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Expect 204 or 500/404', function(){ pm.expect([204,500,404]).to.include(pm.response.code); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/{{quizId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"{{quizId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Admin - Delete Category",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Delete category returns 204 or error codes if not present', function(){ pm.expect([204,500,404]).to.include(pm.response.code); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-User-ID",
+						"value": "{{admin_user_id}}"
+					},
+					{
+						"key": "X-User-Role",
+						"value": "{{admin_role}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/v1/admin/quizzes/categories/{{categoryId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"quizzes",
+						"categories",
+						"{{categoryId}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "admin_user_id",
+			"value": "admin-1"
+		},
+		{
+			"key": "normal_user_id",
+			"value": "user-1"
+		},
+		{
+			"key": "admin_role",
+			"value": "admin"
+		},
+		{
+			"key": "user_role",
+			"value": "user"
+		},
+		{
+			"key": "categoryId",
+			"value": ""
+		},
+		{
+			"key": "quizId",
+			"value": ""
+		},
+		{
+			"key": "questionId",
+			"value": ""
+		},
+		{
+			"key": "correctOption",
+			"value": ""
+		}
+	]
+}

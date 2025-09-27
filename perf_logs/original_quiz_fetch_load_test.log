@@ -1,0 +1,75 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: quiz_fetch_load_test.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 40s max duration (incl. graceful stop):
+              * default: 10 looping VUs for 10s (gracefulStop: 30s)
+
+
+running (01.0s), 10/10 VUs, 0 complete and 0 interrupted iterations
+default   [  10% ] 10 VUs  01.0s/10s
+
+running (02.0s), 10/10 VUs, 10 complete and 0 interrupted iterations
+default   [  20% ] 10 VUs  02.0s/10s
+
+running (03.0s), 10/10 VUs, 20 complete and 0 interrupted iterations
+default   [  30% ] 10 VUs  03.0s/10s
+
+running (04.0s), 10/10 VUs, 30 complete and 0 interrupted iterations
+default   [  40% ] 10 VUs  04.0s/10s
+
+running (05.0s), 10/10 VUs, 40 complete and 0 interrupted iterations
+default   [  50% ] 10 VUs  05.0s/10s
+
+running (06.0s), 10/10 VUs, 50 complete and 0 interrupted iterations
+default   [  60% ] 10 VUs  06.0s/10s
+
+running (07.0s), 10/10 VUs, 60 complete and 0 interrupted iterations
+default   [  70% ] 10 VUs  07.0s/10s
+
+running (08.0s), 10/10 VUs, 70 complete and 0 interrupted iterations
+default   [  80% ] 10 VUs  08.0s/10s
+
+running (09.0s), 10/10 VUs, 80 complete and 0 interrupted iterations
+default   [  90% ] 10 VUs  09.0s/10s
+
+running (10.0s), 10/10 VUs, 90 complete and 0 interrupted iterations
+default   [ 100% ] 10 VUs  10.0s/10s
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 100     9.881389/s
+    checks_succeeded...: 100.00% 100 out of 100
+    checks_failed......: 0.00%   0 out of 100
+
+    ✓ GET /categories status was 200 or 404
+
+    HTTP
+    http_req_duration..............: avg=9.56ms min=2.52ms med=8.34ms max=38.73ms p(90)=19.68ms p(95)=21.24ms
+      { expected_response:true }...: avg=9.56ms min=2.52ms med=8.34ms max=38.73ms p(90)=19.68ms p(95)=21.24ms
+    http_req_failed................: 0.00%  0 out of 100
+    http_reqs......................: 100    9.881389/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.01s  min=1s     med=1.01s  max=1.04s   p(90)=1.02s   p(95)=1.02s  
+    iterations.....................: 100    9.881389/s
+    vus............................: 10     min=10       max=10
+    vus_max........................: 10     min=10       max=10
+
+    NETWORK
+    data_received..................: 51 kB  5.0 kB/s
+    data_sent......................: 9.5 kB 939 B/s
+
+
+
+
+running (10.1s), 00/10 VUs, 100 complete and 0 interrupted iterations
+default ✓ [ 100% ] 10 VUs  10s
